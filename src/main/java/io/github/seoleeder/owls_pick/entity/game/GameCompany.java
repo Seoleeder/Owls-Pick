@@ -16,12 +16,12 @@ public class GameCompany {
 
     @MapsId("gameId")
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "game_id")
+    @JoinColumn(name = "game_id", foreignKey = @ForeignKey(name = "fk_game_company_game_id"))
     private Game game;
 
     @MapsId("companyId")
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "company_id")
+    @JoinColumn(name = "company_id", foreignKey = @ForeignKey(name = "fk_game_company_company_id"))
     private Company company;
 
     private boolean isDeveloper;

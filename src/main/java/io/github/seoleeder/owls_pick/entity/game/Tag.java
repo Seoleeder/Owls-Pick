@@ -5,6 +5,7 @@ import lombok.*;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
+import java.util.ArrayList;
 import java.util.List;
 
 
@@ -16,23 +17,26 @@ import java.util.List;
 @Table
 public class Tag {
     @Id
-    private int id;
+    private Long id;
 
     @OneToOne(fetch = FetchType.LAZY)
     @MapsId
-    @JoinColumn(name = "game_id", nullable = false)
+    @JoinColumn(name = "game_id", nullable = false, foreignKey = @ForeignKey(name = "fk_tag_game_id"))
     private Game game;
 
     @JdbcTypeCode(SqlTypes.ARRAY)
-    @Column(nullable = false, columnDefinition = "text[]")
-    private List<String> genres;
+    @Builder.Default
+    @Column(columnDefinition = "text[]")
+    private List<String> genres = new ArrayList<>();
 
     @JdbcTypeCode(SqlTypes.ARRAY)
-    @Column(nullable = false, columnDefinition = "text[]")
-    private List<String> themes;
+    @Builder.Default
+    @Column(columnDefinition = "text[]")
+    private List<String> themes = new ArrayList<>();
 
     @JdbcTypeCode(SqlTypes.ARRAY)
-    @Column(nullable = false, columnDefinition = "text[]")
-    private List<String> keywords;
+    @Builder.Default
+    @Column(columnDefinition = "text[]")
+    private List<String> keywords = new ArrayList<>();
 
 }

@@ -1,4 +1,4 @@
-package io.github.seoleeder.owls_pick.common.config;
+package io.github.seoleeder.owls_pick.common.config.querydsl;
 
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import jakarta.persistence.EntityManager;

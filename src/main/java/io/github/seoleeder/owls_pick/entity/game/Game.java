@@ -7,6 +7,7 @@ import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Entity
@@ -18,29 +19,30 @@ import java.util.List;
 public class Game {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private int id;
+    private Long id;
 
-    @Column(name = "igdb_id", nullable = false, unique = true)
-    private int igdbId;
+    @Column(unique = true)
+    private Long igdbId;
 
-    @Column(name = "itnd_id", nullable = false, unique = true)
-    private int itnd_id;
+    @Column(unique = true)
+    private String itadId;
 
     @Column(nullable = false)
     private String title;
 
-    @Column(name = "title_localization", nullable = false)
+    @Column
     private String titleLocalization;
 
-    @Column(length = 30, nullable = false)
+    @Column(length = 30)
     private String type;
 
-    @Column(name = "release_status", nullable = false)
+    @Column
     private String releaseStatus;
 
     @JdbcTypeCode(SqlTypes.ARRAY)
-    @Column(nullable = false, columnDefinition = "text[]")
-    private List<String> platform;
+    @Builder.Default
+    @Column(columnDefinition = "text[]")
+    private List<String> platform = new ArrayList<>();
 
     @Column
     private String description;
@@ -48,33 +50,38 @@ public class Game {
     @Column
     private String storyline;
 
-    @Column(name = "first_release", nullable = false)
+    @Column
     private LocalDate firstRelease;
 
-    @Column(name = "rating_kr", length = 30)
+    @Column(length = 30)
     private String ratingKr;
 
-    @Column(name = "rating_esrb", length = 30)
+    @Column(length = 30)
     private String ratingEsrb;
 
     @JdbcTypeCode(SqlTypes.ARRAY)
-    @Column(nullable = false, columnDefinition = "text[]")
-    private List<String> mode;
+    @Builder.Default
+    @Column(columnDefinition = "text[]")
+    private List<String> mode = new ArrayList<>();;
 
     @JdbcTypeCode(SqlTypes.ARRAY)
-    @Column(nullable = false, columnDefinition = "text[]")
-    private List<String> perspective;
+    @Builder.Default
+    @Column(columnDefinition = "text[]")
+    private List<String> perspective = new ArrayList<>();
 
-    @Column(name = "cover_id", length = 30)
+    @Column(length = 30)
     private String coverId;
 
     @Column
     private int hypes;
 
-    @Column(name = "created_at")
+    @Column
+    private LocalDateTime igdbUpdatedAt;
+
+    @Column
     private LocalDateTime createdAt;
 
-    @Column(name = "updated_at")
+    @Column
     private LocalDateTime updatedAt;
 
     @PrePersist // 저장 전 실행
@@ -88,5 +95,65 @@ public class Game {
     public void preUpdate() {
         this.updatedAt = LocalDateTime.now();
     }
+
+
+    public void connectToIgdb(Long newIgdbId) {
+        if (this.igdbId != null) {
+            return;
+        }
+        this.igdbId = newIgdbId;
+    }
+
+    public void updateItadId(String itadId){
+        if (this.itadId != null) {
+            return;
+        }
+        this.itadId = itadId;
+    }
+
+    //IGDB Summary Date Update
+    public void updateFromSummary(
+            String titleLocalization,
+            String type,
+            String releaseStatus,
+            List<String> platform,
+            String description,
+            String storyline,
+            LocalDate firstRelease,
+            int hypes,
+            String coverId,
+            String ratingKr,
+            String ratingEsrb,
+            List<String> mode,
+            List<String> perspective,
+            LocalDateTime igdbUpdatedAt
+    ) {
+        if(this.igdbId == null) {
+            this.igdbId = igdbId;
+        }
+
+        if (titleLocalization != null && !titleLocalization.isBlank()) {
+            this.titleLocalization = titleLocalization;
+        }
+
+        this.description = description;
+        this.storyline = storyline;
+        this.type = type;
+        this.releaseStatus = releaseStatus;
+        this.firstRelease = firstRelease;
+        this.igdbUpdatedAt = igdbUpdatedAt;
+        this.hypes = hypes;
+        this.coverId = coverId;
+
+        // 심의 등급 할당
+        this.ratingEsrb = ratingEsrb;
+        this.ratingKr = ratingKr;
+
+        // 리스트 교체
+        this.platform = platform;
+        this.mode = mode;
+        this.perspective = perspective;
+    }
+
 
 }

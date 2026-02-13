@@ -9,6 +9,9 @@ import org.springframework.http.HttpStatus;
 public enum ErrorCode {
     // Test Error
     TEST_ERROR(10000, HttpStatus.BAD_REQUEST, "테스트 에러입니다."),
+    // 401 Unauthorized
+    UNAUTHORIZED(40100, HttpStatus.UNAUTHORIZED, "인증이 유효하지 않습니다"),
+    ADMIN_KEY_ERROR(40101, HttpStatus.UNAUTHORIZED, "관리자 인증이 유효하지 않습니다"),
     // 404 Not Found
     NOT_FOUND_END_POINT(40400, HttpStatus.NOT_FOUND, "존재하지 않는 API입니다."),
     // 500 Internal Server Error

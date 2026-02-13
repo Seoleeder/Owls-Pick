@@ -15,37 +15,37 @@ import java.time.LocalDateTime;
 public class Review {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private int id;
+    private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "game_id", nullable = false)
+    @JoinColumn(name = "game_id", nullable = false, foreignKey = @ForeignKey(name = "fk_review_game_id"))
     private Game game;
 
-    @Column(name = "recommendation_id", nullable = false)
-    private long recommendationId;
+    @Column(nullable = false)
+    private Long recommendationId;
 
-    @Column(name = "review_text", columnDefinition = "text", nullable = false)
+    @Column(columnDefinition = "text", nullable = false)
     private String reviewText;
 
-    @Column(name = "weighted_vote_score",precision = 5,scale = 2)
+    @Column(precision = 5,scale = 2)
     private BigDecimal weightedVoteScore;
 
-    @Column(name = "playtime_at_review",precision = 10, scale = 2)
-    private BigDecimal playtimeAtReview;
+    @Column
+    private int playtimeAtReview;
 
-    @Column(name = "voted_up")
+    @Column
     private Boolean votedUp;
 
-    @Column(name = "votes_up")
+    @Column
     private int votesUp;
 
-    @Column(name = "written_at")
+    @Column
     private LocalDateTime writtenAt;
 
-    @Column(name = "created_at")
+    @Column
     private LocalDateTime createdAt;
 
-    @Column(name = "updated_at")
+    @Column
     private LocalDateTime updatedAt;
 
     @PrePersist // 저장 전 실행

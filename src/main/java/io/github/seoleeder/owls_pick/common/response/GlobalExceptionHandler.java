@@ -13,7 +13,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(value = {NoHandlerFoundException.class, HttpRequestMethodNotSupportedException.class})
     public CommonResponse<?> handleNoPageFoundException(Exception e) {
         log.error("GlobalExceptionHandler catch NoHandlerFoundException : {}", e.getMessage());
-        return CommonResponse.fail(new CustomException(ErrorCode.NOT_FOUND_END_POINT));
+        return CommonResponse.fail(ErrorCode.NOT_FOUND_END_POINT);
     }
 
 
@@ -21,7 +21,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(value = {CustomException.class})
     public CommonResponse<?> handleCustomException(CustomException e) {
         log.error("handleCustomException() in GlobalExceptionHandler throw CustomException : {}", e.getMessage());
-        return CommonResponse.fail(e);
+        return CommonResponse.fail(e.getErrorCode());
     }
 
     // 기본 예외
@@ -29,6 +29,6 @@ public class GlobalExceptionHandler {
     public CommonResponse<?> handleException(Exception e) {
         log.error("handleException() in GlobalExceptionHandler throw Exception : {}", e.getMessage());
         e.printStackTrace();
-        return CommonResponse.fail(new CustomException(ErrorCode.INTERNAL_SERVER_ERROR));
+        return CommonResponse.fail(ErrorCode.INTERNAL_SERVER_ERROR);
     }
 }

@@ -1,0 +1,47 @@
+package io.github.seoleeder.owls_pick.support;
+
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.utility.DockerImageName;
+
+/**
+ * 통합 테스트의 상위 클래스
+ * 테스트 시작 전 자동으로 DB, Redis 컨테이너 로드
+ * */
+public abstract class AbstractContainerBaseTest {
+
+    // PostgreSQL 컨테이너 (15-alpine)
+    static final PostgreSQLContainer<?> POSTGRES_CONTAINER = new PostgreSQLContainer<>(
+            DockerImageName.parse("pgvector/pgvector:pg17")
+                    .asCompatibleSubstituteFor("postgres")
+    )
+            .withDatabaseName("owlspick_test")
+            .withUsername("test")
+            .withPassword("test");
+
+    // Redis 컨테이너 (7-alpine)
+    static final GenericContainer<?> REDIS_CONTAINER = new GenericContainer<>(DockerImageName.parse("redis:7-alpine"))
+            .withExposedPorts(6379);
+
+    static {
+        // 컨테이너 실행 (병렬 시작)
+        POSTGRES_CONTAINER.start();
+        REDIS_CONTAINER.start();
+    }
+
+    // 3. 스프링 부트 환경변수에 컨테이너 접속 정보 주입
+    // (컨테이너는 뜰 때마다 포트가 랜덤으로 바뀌므로, 이렇게 동적으로 넣어줘야 합니다.)
+    @DynamicPropertySource
+    static void overrideProps(DynamicPropertyRegistry registry) {
+        // Postgres 연결 정보
+        registry.add("spring.datasource.url", POSTGRES_CONTAINER::getJdbcUrl);
+        registry.add("spring.datasource.username", POSTGRES_CONTAINER::getUsername);
+        registry.add("spring.datasource.password", POSTGRES_CONTAINER::getPassword);
+
+        // Redis 연결 정보
+        registry.add("spring.data.redis.host", REDIS_CONTAINER::getHost);
+        registry.add("spring.data.redis.port", () -> REDIS_CONTAINER.getMappedPort(6379));
+    }
+}

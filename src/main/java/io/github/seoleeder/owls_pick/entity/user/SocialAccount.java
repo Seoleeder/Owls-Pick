@@ -13,11 +13,11 @@ import lombok.*;
 public class SocialAccount {
 
     @Id
-    private int id;
+    private Long id;
 
     @OneToOne(fetch = FetchType.LAZY)
     @MapsId
-    @JoinColumn(name = "user_id", nullable = false)
+    @JoinColumn(name = "user_id", nullable = false, foreignKey = @ForeignKey(name = "fk_social_account_user_id"))
     private User user;
 
     @Column(nullable = false)

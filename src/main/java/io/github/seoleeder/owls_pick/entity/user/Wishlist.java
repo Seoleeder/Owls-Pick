@@ -19,16 +19,16 @@ public class Wishlist {
 
     @MapsId("userId")
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
+    @JoinColumn(name = "user_id", nullable = false, foreignKey = @ForeignKey(name = "fk_wishlist_user_id"))
     private User user;
 
     @MapsId("gameId")
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "game_id", nullable = false)
+    @JoinColumn(name = "game_id", nullable = false, foreignKey = @ForeignKey(name = "fk_wishlist_game_id"))
     private Game game;
 
     @Getter
-    @Column(name = "created_at", nullable = false, updatable = false)
+    @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
     @PrePersist // 저장 전 시각 자동 기록
