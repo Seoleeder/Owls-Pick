@@ -5,12 +5,12 @@ import lombok.Getter;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
-@Entity
+//@Entity
 @Getter
 @Table(name = "vector_embedding")
 public class VectorEmbedding {
     @Id
-    private Integer gameId;
+    private Long gameId;
 
     @MapsId
     @OneToOne(fetch = FetchType.LAZY)

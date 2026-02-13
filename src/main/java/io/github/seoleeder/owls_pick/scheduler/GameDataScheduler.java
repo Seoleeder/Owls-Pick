@@ -1,0 +1,119 @@
+package io.github.seoleeder.owls_pick.scheduler;
+
+import io.github.seoleeder.owls_pick.service.client.igdb.IGDBSyncService;
+import io.github.seoleeder.owls_pick.service.client.itad.ITADSyncService;
+import io.github.seoleeder.owls_pick.service.client.steam.SteamAppSyncService;
+import io.github.seoleeder.owls_pick.service.client.steam.SteamDashboardSyncService;
+import io.github.seoleeder.owls_pick.service.client.steam.SteamReviewSyncService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Component;
+
+@Slf4j
+@Component
+@RequiredArgsConstructor
+public class GameDataScheduler {
+    private final SteamAppSyncService steamAppService;
+    private final SteamDashboardSyncService steamDashboardService;
+    private final SteamReviewSyncService steamReviewService;
+    private final IGDBSyncService igdbService;
+    private final ITADSyncService itadService;
+
+    @Scheduled
+    public void scheduleDailyFullSync(){
+        log.debug("[Scheduler] Daily Full Sync Started");
+
+        try {
+            // 1. Steam App List
+            log.info("[Scheduler] 1. Steam App List Sync");
+            steamAppService.syncAppList();
+
+            // 2. IGDB Metadata
+            log.info("[Scheduler] 2. IGDB Metadata Sync");
+            igdbService.syncUpdatedGames();
+
+            // 3. Steam Review Data
+            log.info("[Scheduler] 3. Steam Review Data Sync");
+            steamReviewService.syncReviews();
+
+            log.info("[Scheduler] Daily Full Sync Finished!");
+
+        } catch (Exception e) {
+            log.error("[Scheduler] Daily Full Sync Failed", e);
+        }
+    }
+
+    @Scheduled(cron = "0 0 0,6,12,18 * * *")
+    public void schedulePriceSync() {
+        log.debug("[Scheduler] 6-Hour Price Sync Started");
+        try {
+            itadService.syncMissingItadIds();
+            itadService.syncPrices();
+            log.info("[Scheduler] Price Sync Completed!");
+        } catch (Exception e) {
+            log.error("[Scheduler] Price Sync Failed", e);
+        }
+    }
+
+    // 실시간 차트 업데이트 스케줄링
+    /**
+     * 현재 최다 동시 접속자 수 게임 업데이트 (Concurrent Player Top Games)
+     * - 주기 : 15분 간격 (0, 15, 30, 45)
+     * */
+    @Scheduled(cron = "0 0/15 * * * *")
+    public void scheduleConcurrentPlayers(){
+        log.debug("[Scheduler] 15-min Concurrent Players Sync Started");
+        steamDashboardService.syncConcurrentPlayers();
+        log.info("[Scheduler] 15-min Concurrent Players Finished!");
+    }
+
+    /**
+     * 지난 24시간 최다 플레이 게임 업데이트 (Most Played Games)
+     * - 주기 : 1시간 간격
+     * */
+    @Scheduled(cron =  "0 0 * * * *")
+    public void scheduleMostPlayed(){
+        log.debug("[Scheduler] Most Played (24h) Sync Started");
+        steamDashboardService.syncMostPlayed();
+        log.info("[Scheduler] Most Played Sync Finished!");
+    }
+
+    // 주기별 차트 업데이트 스케줄링 (Weekly / Monthly / Yearly)
+
+    /**
+     * 주간 최고 매출 게임 업데이트 (Weekly Top Sellers)
+     *  - 주기 : 매주 회요일 01시 (PST) -> 매주 화요일 18시 (KST)
+     */
+    @Scheduled(cron = "0 0 18 * * TUE")
+    public void scheduleWeeklyTopSellers(){
+        log.debug("[Scheduler] Weekly Top Seller Game Sync Started (Tue 18:00 KST)");
+        steamDashboardService.syncScheduledWeekly();
+        log.info("[Scheduler] Weekly Top Seller Game Sync Finished!");
+    }
+
+    /**
+     * 월간 최고 인기 게임 업데이트 (Month Top App)
+     *  - 주기 : 매월 15일 10시 (PST) -> 매월 16일 03시 (KST)
+     */
+    @Scheduled(cron = "0 0 3 16 * *")
+    public void scheduleMonthlyTopApp(){
+        log.debug("[Scheduler] Monthly Top Game Sync Started (16th 03:00 KST)");
+        steamDashboardService.syncScheduledMonthly();
+        log.info("[Scheduler] Monthly Top Game Sync Finished!");
+    }
+
+    /**
+     * 연간 최고 인기 게임 업데이트 (Year Top App)
+     *  - 주기 : 매년 1월 15일 01:00 (PST) -> 매년 1월 15일 18:00 (KST)
+     */
+    @Scheduled(cron = "0 0 18 15 1 *")
+    public void scheduleYearlyTopApp(){
+        log.debug("[Scheduler] Yearly Top Game Sync Started (Jan 15th 18:00 KST)");
+        steamDashboardService.syncScheduledYearly();
+        log.info("[Scheduler] Yearly Top Game Sync Finished!");
+    }
+
+
+
+}

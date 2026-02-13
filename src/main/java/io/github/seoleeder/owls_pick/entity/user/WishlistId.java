@@ -12,6 +12,6 @@ import java.io.Serializable;
 @EqualsAndHashCode // 복합키 식별을 위해 필수
 public class WishlistId implements Serializable {
 
-    private int userId;
-    private int gameId;
+    private Long userId;
+    private Long gameId;
 }

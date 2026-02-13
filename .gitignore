@@ -37,5 +37,5 @@ out/
 .vscode/
 
 ### YAML Config ###
-**/application.yml
-**/application-*.yml
+**/application.yaml
+**/application-*.yaml

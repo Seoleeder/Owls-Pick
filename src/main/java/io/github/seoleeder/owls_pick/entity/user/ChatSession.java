@@ -14,10 +14,10 @@ import java.time.LocalDateTime;
 public class ChatSession {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private int id;
+    private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
+    @JoinColumn(name = "user_id", nullable = false, foreignKey = @ForeignKey(name = "fk_chat_session_user_id"))
     private User user;
 
     //Gen-API로 30자 이내로 요약

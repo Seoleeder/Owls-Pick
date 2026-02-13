@@ -13,11 +13,12 @@ import java.time.LocalDateTime;
 @Table(name = "review_stat")
 public class ReviewStat {
     @Id
-    private int id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
     @MapsId
     @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "game_id", nullable = false)
+    @JoinColumn(name = "game_id", nullable = false, foreignKey = @ForeignKey(name = "fk_review_stat_game_id"))
     private Game game;
 
     @Column(name = "review_score")
@@ -26,14 +27,14 @@ public class ReviewStat {
     @Column(name = "review_score_desc",length = 30)
     private String reviewScoreDesc;
 
+    @Column(name = "total_review")
+    private int totalReview;
+
     @Column(name = "total_positive")
     private int totalPositive;
 
     @Column(name = "total_negative")
     private int totalNegative;
-
-    @Column(name = "total_review")
-    private int totalReview;
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;
@@ -51,5 +52,13 @@ public class ReviewStat {
     @PreUpdate // 수정 전 실행
     public void preUpdate() {
         this.updatedAt = LocalDateTime.now();
+    }
+
+    public void updateStats(int reviewScore, String reviewScoreDesc,int totalReview, int totalPositive, int totalNegative) {
+        this.reviewScore = reviewScore;
+        this.reviewScoreDesc = reviewScoreDesc;
+        this.totalReview = totalReview;
+        this.totalPositive = totalPositive;
+        this.totalNegative = totalNegative;
     }
 }

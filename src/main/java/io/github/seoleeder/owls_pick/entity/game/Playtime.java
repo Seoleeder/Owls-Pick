@@ -14,18 +14,23 @@ import java.time.LocalDateTime;
 public class Playtime {
 
     @Id
-    private int id;
+    private Long id;
 
-    @Column(name = "main_story")
+    @MapsId
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "game_id", foreignKey = @ForeignKey(name = "fk_playtime_game_id"))
+    private Game game;
+
+    @Column
     private Integer mainStory;
 
-    @Column(name = "main_extras")
+    @Column
     private Integer mainExtras;
 
     @Column
     private Integer completionist;
 
-    @Column(name = "updated_at")
+    @Column
     private LocalDateTime updatedAt;
 
     @PreUpdate // 수정 전 실행

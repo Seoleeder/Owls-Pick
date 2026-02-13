@@ -12,18 +12,21 @@ import lombok.*;
 public class LanguageSupport {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private int id;
+    private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "game_id", nullable = false)
+    @JoinColumn(name = "game_id", nullable = false, foreignKey = @ForeignKey(name = "fk_language_support_game_id"))
     private Game game;
 
-    @Column(name = "voice_support")
+    @Column(length = 30)
+    private String language;
+
+    @Column
     private Boolean voiceSupport;
 
     @Column
     private Boolean subtitle;
 
-    @Column(name = "inter_support")
+    @Column
     private Boolean interSupport;
 }

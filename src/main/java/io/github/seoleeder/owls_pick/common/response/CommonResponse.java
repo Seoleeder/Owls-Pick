@@ -21,7 +21,7 @@ public record CommonResponse<T> (
         return new CommonResponse<>(HttpStatus.CREATED, true, data, null);
     }
 
-    public static <T> CommonResponse<T> fail(final CustomException e) {
-        return new CommonResponse<>(e.getErrorCode().getHttpStatus(), false, null, ExceptionDto.of(e.getErrorCode()));
+    public static <T> CommonResponse<T> fail(final ErrorCode c) {
+        return new CommonResponse<>(c.getHttpStatus(), false, null, ExceptionDto.of(c));
     }
 }
