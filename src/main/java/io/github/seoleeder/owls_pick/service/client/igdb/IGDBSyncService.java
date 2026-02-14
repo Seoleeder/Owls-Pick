@@ -384,7 +384,7 @@ public class IGDBSyncService {
                 });
             }
 
-
+        }
         // 데이터 저장
 
         // 기존 연관 데이터 삭제
@@ -401,7 +401,7 @@ public class IGDBSyncService {
         screenshotRepository.saveAll(screenshots);
         languageSupportRepository.saveAll(languages);
         gameCompanyRepository.saveAll(gameCompanies);
-        }
+
     }
 
     // ---------------------------------------------------------------------------------

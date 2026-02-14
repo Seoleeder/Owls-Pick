@@ -31,8 +31,7 @@ public abstract class AbstractContainerBaseTest {
         REDIS_CONTAINER.start();
     }
 
-    // 3. 스프링 부트 환경변수에 컨테이너 접속 정보 주입
-    // (컨테이너는 뜰 때마다 포트가 랜덤으로 바뀌므로, 이렇게 동적으로 넣어줘야 합니다.)
+    // 컨테이너 접속 정보 주입
     @DynamicPropertySource
     static void overrideProps(DynamicPropertyRegistry registry) {
         // Postgres 연결 정보
