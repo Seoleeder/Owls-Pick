@@ -100,7 +100,7 @@ class SteamAppSyncServiceTest {
     }
 
     @Test
-    @DisplayName("API 호출 중 에러 발생 시 로그 남기고 루프 탈출")
+    @DisplayName("[동기화 실패] API 호출 중 에러 발생 시 로그 남기고 루프 탈출")
     void syncAppListApiErrorStopLoop() {
         // Given
         given(storeDetailRepository.findAllAppIdsByStore(any())).willReturn(Collections.emptySet());
@@ -118,7 +118,7 @@ class SteamAppSyncServiceTest {
     }
 
     @Test
-    @DisplayName("API 응답 데이터가 DB에 있다면 저장하지 X")
+    @DisplayName("[동기화 실패] API 응답 데이터가 DB에 있다면 저장하지 X")
     void syncAppListAllExistingNoSave() {
         // Given
         given(storeDetailRepository.findAllAppIdsByStore(any())).willReturn(Set.of("100", "200"));

@@ -49,7 +49,7 @@ class ITADSyncServiceTest {
 
     @BeforeEach
     void setUp() {
-        // 🦅 ITAD 설정 객체 생성 (batchSize 포함)
+        // ITAD 설정 객체 생성 (batchSize 포함)
         ItadProperties props = new ItadProperties("test-key", "api.test.com", 100);
 
         itadSyncService = new ITADSyncService(

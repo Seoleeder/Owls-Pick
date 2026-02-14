@@ -25,7 +25,6 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.function.Consumer;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
@@ -61,10 +60,17 @@ class SteamDashboardSyncServiceTest {
                 transactionTemplate,
                 props
         );
+
+        // 트랜잭션 템플릿 내부 로직 실행 보장 (lenient: 미호출 시 Stubbing 에러 방지)
+        lenient().doAnswer(inv -> {
+            Consumer<TransactionStatus> callback = inv.getArgument(0);
+            callback.accept(null);
+            return null;
+        }).when(transactionTemplate).executeWithoutResult(any());
     }
 
     @Test
-    @DisplayName("[실시간] 동시 접속자 데이터를 수집하고, DB에 없는 게임은 제외 후 저장 및 캐시 갱신")
+    @DisplayName("[실시간] 동시 접속자 데이터 수집, 저장 및 캐시 갱신 (DB에 없는 게임은 제외)")
     void syncConcurrentPlayers_Success() {
         // Given
         // 1. API 응답 (1위: 100번 게임, 2위: 200번 게임)
@@ -75,13 +81,6 @@ class SteamDashboardSyncServiceTest {
         SteamDashboardResponse response = new SteamDashboardResponse(LocalDateTime.now(), ranks);
 
         given(collector.collectConcurrentPlayersTopApp("KR")).willReturn(response);
-
-        // 2. TransactionTemplate 실행 강제
-        doAnswer(inv -> {
-            Consumer<TransactionStatus> callback = inv.getArgument(0);
-            callback.accept(null);
-            return null;
-        }).when(transactionTemplate).executeWithoutResult(any());
 
         // 3. DB 조회 시나리오
         // "100번" 게임은 DB에 존재함 (Game 객체 생성)
@@ -108,4 +107,67 @@ class SteamDashboardSyncServiceTest {
         // 2. Redis 캐시 갱신 호출 검증
         verify(dashboardCacheService).refreshCache(Dashboard.CurationType.CONCURRENT_PLAYER);
     }
+
+    @Test
+    @DisplayName("[정기/주간] 해당 기간의 데이터가 없으면 수집 후 저장")
+    void syncScheduledWeekly_Success() {
+        // Given
+        // 1. 중복 체크: DB에 해당 기간 데이터가 '없다(false)'고 가정 -> 수집 로직 실행됨
+        given(dashboardRepository.existsByCurationTypeAndReferenceAt(eq(Dashboard.CurationType.WEEKLY_TOP_SELLER), any()))
+                .willReturn(false);
+
+        // 2. API 응답 (1위: 100번 게임)
+        List<Rank> ranks = List.of(new Rank(1, 100L));
+        SteamDashboardResponse response = new SteamDashboardResponse(LocalDateTime.now(), ranks);
+
+        // 날짜 계산 로직은 서비스 내부이므로 인자는 any()로 유연하게 처리
+        given(collector.collectWeeklyTopSellers(any(), any(), any(), any()))
+                .willReturn(response);
+
+        // 4. DB 조회 (게임 정보 매핑용)
+        Game game = Game.builder().id(1L).title("Elden Ring").build();
+        StoreDetail detail = StoreDetail.builder().game(game).storeAppId("100").build();
+
+        given(storeDetailRepository.findByStoreNameAndStoreAppIdIn(eq(StoreDetail.StoreName.STEAM), anyList()))
+                .willReturn(List.of(detail));
+
+        // When
+        steamDashboardSyncService.syncScheduledWeekly();
+
+        // Then
+        // 1. API 호출 검증 (중복 데이터가 없었으므로 호출되어야 함)
+        verify(collector).collectWeeklyTopSellers(any(), any(), any(), any());
+
+        // 2. 저장 검증: 타입(Weekly)과 랭킹이 정확히 들어갔는지 확인
+        verify(dashboardRepository).saveAll(argThat(list -> {
+            List<Dashboard> dashboards = (List<Dashboard>) list;
+            return dashboards.size() == 1
+                    && dashboards.get(0).getCurationType() == Dashboard.CurationType.WEEKLY_TOP_SELLER
+                    && dashboards.get(0).getRank() == 1
+                    && dashboards.get(0).getGame().getTitle().equals("Elden Ring");
+        }));
+
+        // 3. 캐시 갱신 검증
+        verify(dashboardCacheService).refreshCache(Dashboard.CurationType.WEEKLY_TOP_SELLER);
+    }
+
+    @Test
+    @DisplayName("[정기/주간] 이미 해당 기간의 데이터가 존재하면 API 호출을 건너뛴다 (중복 방지)")
+    void syncScheduledWeekly_SkipIfExists() {
+        // Given
+        // 1. 중복 체크: DB에 이미 데이터가 '있다(true)'고 가정 -> 얼리 리턴(Early Return) 발동
+        given(dashboardRepository.existsByCurationTypeAndReferenceAt(eq(Dashboard.CurationType.WEEKLY_TOP_SELLER), any()))
+                .willReturn(true);
+
+        // When
+        steamDashboardSyncService.syncScheduledWeekly();
+
+        // Then
+        // 1. 핵심 검증: API 수집기가 절대로 호출되지 않아야 함 (네트워크 비용 절감 & 중복 방지)
+        verify(collector, never()).collectWeeklyTopSellers(any(), any(), any(), any());
+
+        // 2. 저장 로직도 실행되지 않아야 함
+        verify(dashboardRepository, never()).saveAll(any());
+    }
+
 }

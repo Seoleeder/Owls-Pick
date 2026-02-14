@@ -15,7 +15,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.transaction.TransactionStatus;
@@ -29,6 +28,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
 
+import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.BDDMockito.given;
@@ -67,6 +67,13 @@ class SteamReviewSyncServiceTest {
                 transactionTemplate,
                 props
         );
+
+        // 트랜잭션 템플릿 내부 로직 실행 보장 (lenient: 미호출 시 Stubbing 에러 방지)
+        lenient().doAnswer(invocation -> {
+            Consumer<TransactionStatus> callback = invocation.getArgument(0); //람다식 로직을 인자에서 꺼냄
+            callback.accept(null); // 로직을 바로 실행
+            return null;
+        }).when(transactionTemplate).executeWithoutResult(any());
     }
 
     @Test
@@ -89,13 +96,6 @@ class SteamReviewSyncServiceTest {
 
         given(collector.collectRefinedReviews(12345L, 5)).willReturn(response);
 
-        // 4. TransactionTemplate 모킹 (비동기 스레드 안에서도 동작)
-        doAnswer(invocation -> {
-            Consumer<TransactionStatus> callback = invocation.getArgument(0);
-            callback.accept(null); // saveReviewData 실행
-            return null;
-        }).when(transactionTemplate).executeWithoutResult(any());
-
         // 5. 기존 통계/리뷰 존재 여부 (신규 저장 시나리오)
         given(reviewStatRepository.findById(1L)).willReturn(Optional.empty());
         given(reviewRepository.existsByGameIdAndRecommendationId(1L, 100L)).willReturn(false);
@@ -112,8 +112,8 @@ class SteamReviewSyncServiceTest {
     }
 
     @Test
-    @DisplayName("이미 통계가 존재하면 updateStats를 호출하고, 중복 리뷰는 건너뛰어야 한다")
-    void initAllReviews_UpdateExisting() {
+    @DisplayName("리뷰 통계가 이미 존재 -> updateStats를 호출, DB에 없는 리뷰만 저장")
+    void initReviews_UpdateStatsAndSaveNew() {
         // Given
         Game game = Game.builder().id(1L).title("Dark Souls").build();
         StoreDetail detail = StoreDetail.builder().game(game).storeAppId("999").build();
@@ -129,10 +129,6 @@ class SteamReviewSyncServiceTest {
 
         given(collector.collectRefinedReviews(999L, 5))
                 .willReturn(new SteamReviewResponse(stats, List.of(reviewA, reviewB)));
-
-        // 트랜잭션 실행 강제
-        doAnswer(inv -> { ((Consumer<TransactionStatus>)inv.getArgument(0)).accept(null); return null; })
-                .when(transactionTemplate).executeWithoutResult(any());
 
         // Mock 객체(ReviewStat) 준비 -> updateStats 호출 여부 확인용
         ReviewStat mockStat = mock(ReviewStat.class);
@@ -151,5 +147,64 @@ class SteamReviewSyncServiceTest {
 
         // 2. 중복이 아닌 리뷰("B")만 담아서 saveAll이 호출되었는지 확인
         verify(reviewRepository).saveAll(argThat(list -> ((Collection<?>) list).size() == 1));
+    }
+
+    @Test
+    @DisplayName("[정기 업데이트] 기존 통계는 갱신하고, 신규 리뷰는 저장")
+    void syncReviews_UpdateStats_And_SaveNewReviews() {
+        // 1. Given: 기존 데이터 세팅
+        Long gameId = 1L;
+        Game mockGame = Game.builder().id(gameId).title("Elden Ring").build();
+        StoreDetail detail = StoreDetail.builder().game(mockGame).storeAppId("12345").build();
+
+        // 갱신 이전의 리뷰 통계 데이터
+        ReviewStat existingStat = ReviewStat.builder()
+                .game(mockGame)
+                .reviewScore(50)
+                .totalReview(100)
+                .totalPositive(50)
+                .totalNegative(50)
+                .build();
+
+        // 최신 통계 데이터 수집
+        SteamReviewStats newApiStats = new SteamReviewStats(90, "Very Positive", 500, 450, 50);
+
+        // 내부에서 필터링된 새로운 리뷰 수집
+        SteamReviewDetail newReview = new SteamReviewDetail(
+                999L, new SteamReviewDetail.Author(1), new BigDecimal(10), "Great!",
+                160, true, 1600000000L
+        );
+
+        SteamReviewResponse mockResponse = new SteamReviewResponse(newApiStats, List.of(newReview));
+
+        // Mocking
+        when(storeDetailRepository.findGamesNeedingReviewUpdate(any(), anyInt()))
+                .thenReturn(List.of(detail));
+
+        when(collector.collectRefinedReviews(anyLong(), anyInt()))
+                .thenReturn(mockResponse); // 리뷰가 포함된 응답 리턴
+
+        when(reviewStatRepository.findById(gameId))
+                .thenReturn(Optional.of(existingStat)); // 기존 통계 발견
+
+        // 중복 체크: 999번 리뷰는 DB에 없다(false)고 가정 -> 저장 대상
+        lenient().when(reviewRepository.existsByGameIdAndRecommendationId(eq(gameId), eq(999L)))
+                .thenReturn(false);
+
+        // 2. When
+        steamReviewSyncService.syncReviews();
+
+        // 3. Then
+        // 통계 업데이트 (Dirty Checking) 확인
+        // save() 호출 없이 객체의 값 자체가 50 -> 90으로 변했는지 확인
+        assertThat(existingStat.getReviewScore()).isEqualTo(90);
+        assertThat(existingStat.getTotalReview()).isEqualTo(500);
+
+        // 신규 리뷰 저장 확인
+        // 통계는 update지만, 리뷰는 insert가 일어나야 함
+        verify(reviewRepository).saveAll(argThat(list -> {
+            List<?> reviews = (List<?>) list;
+            return reviews.size() == 1;
+        }));
     }
 }

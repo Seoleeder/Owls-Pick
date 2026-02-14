@@ -4,6 +4,7 @@ import io.github.seoleeder.owls_pick.client.IGDB.IGDBDataCollector;
 import io.github.seoleeder.owls_pick.client.IGDB.dto.IGDBGameDetailResponse;
 import io.github.seoleeder.owls_pick.client.IGDB.dto.IGDBGameSummaryResponse;
 import io.github.seoleeder.owls_pick.common.config.properties.IgdbProperties;
+import io.github.seoleeder.owls_pick.common.util.TimestampUtils;
 import io.github.seoleeder.owls_pick.entity.game.Game;
 import io.github.seoleeder.owls_pick.entity.game.StoreDetail;
 import io.github.seoleeder.owls_pick.entity.game.Tag;
@@ -19,11 +20,13 @@ import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
 
+import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -41,10 +44,14 @@ class IGDBSyncServiceTest {
     @Mock private GameRepository gameRepository;
     @Mock private StoreDetailRepository storeDetailRepository;
     @Mock private TagRepository tagRepository;
-    @Mock private TransactionTemplate transactionTemplate;
+    @Mock private ScreenshotRepository screenshotRepository;
+    @Mock private CompanyRepository companyRepository;
+    @Mock private GameCompanyRepository gameCompanyRepository;
+    @Mock private LanguageSupportRepository languageSupportRepository;
 
+    @Mock private TransactionTemplate transactionTemplate;
     @Test
-    @DisplayName("Steam App Id와 igdbId 매핑 -> igdbId 기반 게임 데이터 수집 저장")
+    @DisplayName("[초기 수집] Steam App Id와 igdbId 매핑 -> igdbId 기반 게임 데이터 수집 저장")
     void backfillAllGames_Success() {
         // Given
         // 마지막으로 수집된 IGDB ID 조회 (최초는 0부터 시작)
@@ -130,5 +137,50 @@ class IGDBSyncServiceTest {
             List<Tag> tags = (List<Tag>) list;
             return !tags.isEmpty() && tags.get(0).getGenres().contains("RPG");
         }));
+    }
+
+    @Test
+    @DisplayName("[정기 업데이트] '최종 갱신 시각' 이후에 추가 및 변경된 데이터만 수집")
+    void syncUpdatedGames_Success() {
+        // 1. Given
+        LocalDateTime lastUpdate = LocalDateTime.of(2024, 1, 1, 0, 0);
+        long newUpdateEpoch = 1704153600L;
+        LocalDateTime expectedTime = TimestampUtils.toLocalDateTime(newUpdateEpoch);
+
+        given(gameRepository.findMaxIgdbUpdatedAt()).willReturn(Optional.of(lastUpdate));
+
+        var externalApp = new IGDBGameSummaryResponse.ExternalApp(200L, 1);
+        IGDBGameSummaryResponse updatedSummary = new IGDBGameSummaryResponse(
+                77L, List.of(externalApp), Collections.emptyList(), null, null,
+                Collections.emptyList(), "Updated Description",
+                null, 1704153600L, newUpdateEpoch,
+                Collections.emptyList(), Collections.emptyList(),
+                Collections.emptyList(), null, 0
+        );
+
+        given(collector.collectUpdatedGameSummary(anyLong()))
+                .willReturn(List.of(updatedSummary))
+                .willReturn(Collections.emptyList());
+
+        Game existingGame = Game.builder().id(10L).igdbId(77L).description("Old Description").build();
+        StoreDetail detail = StoreDetail.builder().game(existingGame).storeAppId("200").build();
+
+        given(storeDetailRepository.findByStoreNameAndStoreAppIdIn(any(), anyList()))
+                .willReturn(List.of(detail));
+
+        // execute()가 실제 리스트를 반환하도록 설정 (리턴값이 있어야 if문을 통과함)
+        given(transactionTemplate.execute(any())).willAnswer(inv -> {
+            TransactionCallback<List<Game>> callback = inv.getArgument(0);
+            return callback.doInTransaction(null);
+        });
+
+        given(gameRepository.saveAll(anyList())).willReturn(List.of(existingGame));
+
+        // 2. When
+        igdbSyncService.syncUpdatedGames();
+
+        // 3. Then
+        assertThat(existingGame.getDescription()).isEqualTo("Updated Description");
+        assertThat(existingGame.getIgdbUpdatedAt()).isEqualTo(expectedTime);
     }
 }
