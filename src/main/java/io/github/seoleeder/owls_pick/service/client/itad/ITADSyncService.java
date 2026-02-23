@@ -1,18 +1,16 @@
 package io.github.seoleeder.owls_pick.service.client.itad;
 
-import io.github.seoleeder.owls_pick.client.ITAD.ITADDataCollector;
-import io.github.seoleeder.owls_pick.client.ITAD.ITADStore;
-import io.github.seoleeder.owls_pick.client.ITAD.dto.ITADPriceResponse;
-import io.github.seoleeder.owls_pick.common.config.properties.ItadProperties;
+import io.github.seoleeder.owls_pick.client.itad.ITADDataCollector;
+import io.github.seoleeder.owls_pick.client.itad.ITADStore;
+import io.github.seoleeder.owls_pick.client.itad.dto.ITADPriceResponse;
+import io.github.seoleeder.owls_pick.global.config.properties.ItadProperties;
 import io.github.seoleeder.owls_pick.entity.game.Game;
 import io.github.seoleeder.owls_pick.entity.game.StoreDetail;
 import io.github.seoleeder.owls_pick.entity.game.StoreDetail.StoreName;
 import io.github.seoleeder.owls_pick.repository.GameRepository;
 import io.github.seoleeder.owls_pick.repository.StoreDetailRepository;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.client.RestClientException;
 

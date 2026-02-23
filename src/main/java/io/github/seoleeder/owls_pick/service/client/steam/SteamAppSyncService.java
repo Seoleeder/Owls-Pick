@@ -1,15 +1,13 @@
 package io.github.seoleeder.owls_pick.service.client.steam;
 
-import io.github.seoleeder.owls_pick.client.steamweb.SteamDataCollector;
-import io.github.seoleeder.owls_pick.client.steamweb.dto.SteamAppListResponse;
-import io.github.seoleeder.owls_pick.client.steamweb.dto.SteamAppListResponse.Response.App;
-import io.github.seoleeder.owls_pick.client.steamweb.util.SteamGameUrlBuilder;
-import io.github.seoleeder.owls_pick.common.response.CustomException;
+import io.github.seoleeder.owls_pick.client.steam.SteamDataCollector;
+import io.github.seoleeder.owls_pick.client.steam.dto.SteamAppListResponse;
+import io.github.seoleeder.owls_pick.client.steam.dto.SteamAppListResponse.Response.App;
+import io.github.seoleeder.owls_pick.client.steam.util.SteamGameUrlBuilder;
 import io.github.seoleeder.owls_pick.entity.game.Game;
 import io.github.seoleeder.owls_pick.entity.game.StoreDetail;
 import io.github.seoleeder.owls_pick.repository.GameRepository;
 import io.github.seoleeder.owls_pick.repository.StoreDetailRepository;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataAccessException;

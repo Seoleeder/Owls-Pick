@@ -213,7 +213,9 @@ create table public.social_account
         primary key
         constraint fk_social_account_user_id
             references public.users,
-    provider    varchar(255) not null,
+    provider    varchar(30)  not null
+        constraint social_account_provider_check
+            check ((provider)::text = ANY ((ARRAY['GOOGLE'::character varying, 'KAKAO'::character varying, 'NAVER'::character varying])::text[])),
     provider_id varchar(255) not null
 );
 

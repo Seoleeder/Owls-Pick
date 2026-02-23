@@ -1,10 +1,10 @@
 package io.github.seoleeder.owls_pick.config;
 
-import io.github.seoleeder.owls_pick.common.config.AdminAuthorizationInterceptor;
-import io.github.seoleeder.owls_pick.common.config.WebConfig;
-import io.github.seoleeder.owls_pick.common.config.properties.AdminProperties;
-import io.github.seoleeder.owls_pick.common.response.ErrorCode;
-import io.github.seoleeder.owls_pick.common.response.GlobalExceptionHandler;
+import io.github.seoleeder.owls_pick.global.config.AdminAuthorizationInterceptor;
+import io.github.seoleeder.owls_pick.global.config.WebConfig;
+import io.github.seoleeder.owls_pick.global.config.properties.AdminProperties;
+import io.github.seoleeder.owls_pick.global.response.ErrorCode;
+import io.github.seoleeder.owls_pick.global.response.GlobalExceptionHandler;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

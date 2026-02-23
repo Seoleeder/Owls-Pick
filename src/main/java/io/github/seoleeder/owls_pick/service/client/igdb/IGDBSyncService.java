@@ -1,15 +1,14 @@
 package io.github.seoleeder.owls_pick.service.client.igdb;
 
-import io.github.seoleeder.owls_pick.client.IGDB.IGDBDataCollector;
-import io.github.seoleeder.owls_pick.client.IGDB.dto.IGDBGameDetailResponse;
-import io.github.seoleeder.owls_pick.client.IGDB.dto.IGDBGameSummaryResponse;
-import io.github.seoleeder.owls_pick.common.util.TimestampUtils;
+import io.github.seoleeder.owls_pick.client.igdb.IGDBDataCollector;
+import io.github.seoleeder.owls_pick.client.igdb.dto.IGDBGameDetailResponse;
+import io.github.seoleeder.owls_pick.client.igdb.dto.IGDBGameSummaryResponse;
+import io.github.seoleeder.owls_pick.global.util.TimestampUtils;
 import io.github.seoleeder.owls_pick.entity.game.*;
 import io.github.seoleeder.owls_pick.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.client.RestClientException;
 
