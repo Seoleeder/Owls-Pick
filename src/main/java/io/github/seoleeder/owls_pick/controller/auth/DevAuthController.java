@@ -15,14 +15,14 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/dev/auth")
 @RequiredArgsConstructor
-@Tag(name = "테스트 전용 API", description = "운영(prod) 환경에서는 비활성화되는 개발용 백도어 API입니다.")
+@Tag(name = "[DEV] 소셜 로그인 API", description = "운영(prod) 환경에서는 비활성화되는 개발용 백도어 API입니다.")
 public class DevAuthController {
 
     private final AuthService authService;
 
     @Operation(
             summary = "개발용 백도어 로그인",
-            description = "소셜 인증(카카오/구글) 과정을 생략하고, 원하는 이메일로 즉시 로그인(가입)하여 토큰을 발급받습니다."
+            description = "소셜 인증 과정을 생략하고, 원하는 이메일로 즉시 로그인(가입)하여 JWT 토큰 발급"
     )
     @PostMapping("/bypass")
     public CommonResponse<LoginResponse> bypassLogin(

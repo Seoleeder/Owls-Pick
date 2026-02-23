@@ -9,6 +9,10 @@ import io.github.seoleeder.owls_pick.service.client.steam.SteamReviewSyncService
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,7 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.concurrent.CompletableFuture;
 
 @Slf4j
-@Tag(name = "Admin - Game Date Init", description = "게임 데이터 초기 구축 및 수동 제어 (관리자용 / Header 'X-ADMIN-KEY' 필수)")
+@Tag(name = "[ADMIN] 게임 데이터 초기화", description = "게임 데이터 초기 구축 및 수동 제어 (Required Header 'X-ADMIN-KEY')")
 @RestController
 @RequestMapping("/admin/init")
 @RequiredArgsConstructor
@@ -31,10 +35,14 @@ public class GameDataInitializer {
     private final ITADSyncService itadService;
 
     @Operation(summary = "Steam 앱 리스트 초기화",
-                description = "Steam 앱 ID, 타이틀 수집",
+                description = "Steam에 등록된 앱의 ID, 타이틀 수집",
                 parameters = {
                     @Parameter(name = "X-ADMIN-KEY", description = "관리자 키", required = true, in = ParameterIn.HEADER)
                 })
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Steam 앱 리스트 수집 백그라운드 작업 시작 성공", content = @Content(schema = @Schema(implementation = CommonResponse.class))),
+            @ApiResponse(responseCode = "401", description = "관리자 인증 실패 (X-ADMIN-KEY 누락 또는 불일치)", content = @Content(schema = @Schema(implementation = CommonResponse.class)))
+    })
     @PostMapping("/steam-app-list")
     public CommonResponse<String> initSteamAppList(){
 
@@ -54,11 +62,15 @@ public class GameDataInitializer {
     }
 
     @Operation( summary = "Steam 게임 리뷰 데이터 초기화",
-            description = "스팀 리뷰 통계 데이터 수집 -> 적응형 샘플링 & 필터링으로 유용한 리뷰 데이터 수집",
+            description = "스팀 리뷰 통계 데이터 수집 -> 적응형 샘플링 및 필터링으로 유용함 지수가 높은 리뷰 데이터 수집",
             parameters = {
                     @Parameter(name = "X-ADMIN-KEY", description = "관리자 키", required = true, in = ParameterIn.HEADER)
             }
     )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Steam 리뷰 데이터 수집 백그라운드 작업 시작 성공", content = @Content(schema = @Schema(implementation = CommonResponse.class))),
+            @ApiResponse(responseCode = "401", description = "관리자 인증 실패", content = @Content(schema = @Schema(implementation = CommonResponse.class)))
+    })
     @PostMapping("/reviews")
     public CommonResponse<String> initReviews(){
         log.info("[Admin] Steam App Review Sync Requested");
@@ -76,11 +88,15 @@ public class GameDataInitializer {
     }
 
     @Operation(summary = "Steam 대시보드 데이터 초기화",
-            description = "주간, 월간, 연간 인기 차트 데이터 수집 & 실시간 차트 데이터 (최다 플레이, 최다 동접자) 수집",
+            description = "기간별 (주간, 월간, 연간) 인기 차트 데이터 수집 & 실시간 차트 데이터 (최다 플레이, 최다 동접자) 수집",
             parameters = {
                     @Parameter(name = "X-ADMIN-KEY", description = "관리자 키", required = true, in = ParameterIn.HEADER)
             }
     )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Steam 대시보드 데이터 수집 백그라운드 작업 시작 성공", content = @Content(schema = @Schema(implementation = CommonResponse.class))),
+            @ApiResponse(responseCode = "401", description = "관리자 인증 실패", content = @Content(schema = @Schema(implementation = CommonResponse.class)))
+    })
     @PostMapping("/dashboard")
     public CommonResponse<String> initDashboard() {
         log.info("[Admin] Steam Chart Dashboard Sync Requested.");
@@ -105,11 +121,15 @@ public class GameDataInitializer {
     }
 
     @Operation(summary = "Igdb 메타데이터 초기화",
-            description = "게임 주요 데이터 (출시 상태, 심의, 플랫폼, 설명, 태그, 언어 지원 등",
+            description = "게임 주요 데이터 (출시 상태, 심의, 플랫폼, 설명, 태그, 언어 지원 등)",
             parameters = {
                 @Parameter(name = "X-ADMIN-KEY", description = "관리자 키", required = true, in = ParameterIn.HEADER)
             }
     )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "IGDB 메타데이터 수집 백그라운드 작업 시작 성공", content = @Content(schema = @Schema(implementation = CommonResponse.class))),
+            @ApiResponse(responseCode = "401", description = "관리자 인증 실패", content = @Content(schema = @Schema(implementation = CommonResponse.class)))
+    })
     @PostMapping("/igdb")
     public CommonResponse<String> initIgdb() {
         log.info("[Admin] IGDB Sync Requested.");
@@ -132,6 +152,10 @@ public class GameDataInitializer {
                     @Parameter(name = "X-ADMIN-KEY", description = "관리자 키", required = true, in = ParameterIn.HEADER)
             }
     )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "ITAD 가격 데이터 수집 백그라운드 작업 시작 성공", content = @Content(schema = @Schema(implementation = CommonResponse.class))),
+            @ApiResponse(responseCode = "401", description = "관리자 인증 실패", content = @Content(schema = @Schema(implementation = CommonResponse.class)))
+    })
     @PostMapping("/itad")
     public CommonResponse<String> initItad() {
         log.info("[Admin] ITAD Sync Requested.");
@@ -160,6 +184,10 @@ public class GameDataInitializer {
                     @Parameter(name = "X-ADMIN-KEY", description = "관리자 키", required = true, in = ParameterIn.HEADER)
             }
     )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "전체 게임 데이터 병렬 수집 백그라운드 작업 시작 성공", content = @Content(schema = @Schema(implementation = CommonResponse.class))),
+            @ApiResponse(responseCode = "401", description = "관리자 인증 실패", content = @Content(schema = @Schema(implementation = CommonResponse.class)))
+    })
     @PostMapping("/init-all")
     public CommonResponse<String> initAllGameData(){
         log.info("[Admin] All Game Data Initialization Request Received.");

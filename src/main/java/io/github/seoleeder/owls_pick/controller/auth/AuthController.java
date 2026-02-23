@@ -22,7 +22,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
-@Tag(name = "소셜 인증/인가 API", description = "OAuth 2.0 소셜 로그인, 토큰 재발급, 로그아웃, 회원 탈퇴 처리")
+@Tag(name = "소셜 로그인 API", description = "OAuth 2.0 기반 소셜 로그인, 토큰 재발급, 로그아웃, 회원 탈퇴 처리")
 public class AuthController {
 
     private final AuthService authService;
@@ -76,7 +76,7 @@ public class AuthController {
                                 "data": {
                                     "accessToken": "eyJhbGciOiJIUzUxMiJ9...",
                                     "refreshToken": "eyJhbGciOiJIUzUxMiJ9...",
-                                    "nickname": "한지수",
+                                    "nickname": "김도영",
                                     "email": "jisuhan00@gmail.com"
                                 },
                                 "error": null
@@ -244,7 +244,7 @@ public class AuthController {
                                 "data": {
                                     "accessToken": "새로운_액세스_토큰...",
                                     "refreshToken": "기존_또는_새로운_리프레시_토큰...",
-                                    "nickname": "한지수",
+                                    "nickname": "김도영",
                                     "email": "jisuhan00@kakao.com"
                                 },
                                 "error": null
