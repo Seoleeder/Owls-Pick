@@ -21,9 +21,13 @@ public class SocialAccount {
     private User user;
 
     @Column(nullable = false)
-    private String provider;
+    @Enumerated(EnumType.STRING)
+    private Provider provider;
 
     @Column(name = "provider_id", nullable = false)
     private String providerId;
 
+    public enum Provider{
+        GOOGLE, KAKAO, NAVER
+    }
 }

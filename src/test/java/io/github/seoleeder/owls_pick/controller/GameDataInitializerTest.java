@@ -1,8 +1,8 @@
 package io.github.seoleeder.owls_pick.controller;
 
-import io.github.seoleeder.owls_pick.common.config.AdminAuthorizationInterceptor;
-import io.github.seoleeder.owls_pick.common.config.WebConfig;
-import io.github.seoleeder.owls_pick.common.config.properties.AdminProperties;
+import io.github.seoleeder.owls_pick.global.config.AdminAuthorizationInterceptor;
+import io.github.seoleeder.owls_pick.global.config.WebConfig;
+import io.github.seoleeder.owls_pick.global.config.properties.AdminProperties;
 import io.github.seoleeder.owls_pick.service.client.igdb.IGDBSyncService;
 import io.github.seoleeder.owls_pick.service.client.itad.ITADSyncService;
 import io.github.seoleeder.owls_pick.service.client.steam.SteamAppSyncService;

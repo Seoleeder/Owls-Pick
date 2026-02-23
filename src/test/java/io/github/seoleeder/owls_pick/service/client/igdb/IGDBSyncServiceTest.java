@@ -1,15 +1,13 @@
 package io.github.seoleeder.owls_pick.service.client.igdb;
 
-import io.github.seoleeder.owls_pick.client.IGDB.IGDBDataCollector;
-import io.github.seoleeder.owls_pick.client.IGDB.dto.IGDBGameDetailResponse;
-import io.github.seoleeder.owls_pick.client.IGDB.dto.IGDBGameSummaryResponse;
-import io.github.seoleeder.owls_pick.common.config.properties.IgdbProperties;
-import io.github.seoleeder.owls_pick.common.util.TimestampUtils;
+import io.github.seoleeder.owls_pick.client.igdb.IGDBDataCollector;
+import io.github.seoleeder.owls_pick.client.igdb.dto.IGDBGameDetailResponse;
+import io.github.seoleeder.owls_pick.client.igdb.dto.IGDBGameSummaryResponse;
+import io.github.seoleeder.owls_pick.global.util.TimestampUtils;
 import io.github.seoleeder.owls_pick.entity.game.Game;
 import io.github.seoleeder.owls_pick.entity.game.StoreDetail;
 import io.github.seoleeder.owls_pick.entity.game.Tag;
 import io.github.seoleeder.owls_pick.repository.*;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

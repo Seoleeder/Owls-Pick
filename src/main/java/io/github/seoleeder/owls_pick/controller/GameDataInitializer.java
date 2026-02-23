@@ -1,6 +1,6 @@
 package io.github.seoleeder.owls_pick.controller;
 
-import io.github.seoleeder.owls_pick.common.response.CommonResponse;
+import io.github.seoleeder.owls_pick.global.response.CommonResponse;
 import io.github.seoleeder.owls_pick.service.client.igdb.IGDBSyncService;
 import io.github.seoleeder.owls_pick.service.client.itad.ITADSyncService;
 import io.github.seoleeder.owls_pick.service.client.steam.SteamAppSyncService;

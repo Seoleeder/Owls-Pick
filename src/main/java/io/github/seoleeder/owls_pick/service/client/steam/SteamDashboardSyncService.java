@@ -1,9 +1,9 @@
 package io.github.seoleeder.owls_pick.service.client.steam;
 
-import io.github.seoleeder.owls_pick.client.steamweb.SteamDataCollector;
-import io.github.seoleeder.owls_pick.client.steamweb.dto.Dashboard.SteamDashboardResponse;
-import io.github.seoleeder.owls_pick.common.config.properties.SteamProperties;
-import io.github.seoleeder.owls_pick.common.util.TimestampUtils;
+import io.github.seoleeder.owls_pick.client.steam.SteamDataCollector;
+import io.github.seoleeder.owls_pick.client.steam.dto.Dashboard.SteamDashboardResponse;
+import io.github.seoleeder.owls_pick.global.config.properties.SteamProperties;
+import io.github.seoleeder.owls_pick.global.util.TimestampUtils;
 import io.github.seoleeder.owls_pick.entity.game.Dashboard;
 import io.github.seoleeder.owls_pick.entity.game.Dashboard.CurationType;
 import io.github.seoleeder.owls_pick.entity.game.Game;
@@ -11,12 +11,9 @@ import io.github.seoleeder.owls_pick.entity.game.StoreDetail;
 import io.github.seoleeder.owls_pick.repository.DashboardRepository;
 import io.github.seoleeder.owls_pick.repository.StoreDetailRepository;
 import io.github.seoleeder.owls_pick.service.DashboardCacheService;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.client.RestClientException;
 
@@ -29,7 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import static io.github.seoleeder.owls_pick.common.util.TimestampUtils.toEpoch;
+import static io.github.seoleeder.owls_pick.global.util.TimestampUtils.toEpoch;
 
 @Slf4j
 @Service

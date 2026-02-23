@@ -20,7 +20,7 @@ public class GameDataScheduler {
     private final IGDBSyncService igdbService;
     private final ITADSyncService itadService;
 
-    @Scheduled
+    @Scheduled(cron = "0 0 0 * * *")
     public void scheduleDailyFullSync(){
         log.debug("[Scheduler] Daily Full Sync Started");
 

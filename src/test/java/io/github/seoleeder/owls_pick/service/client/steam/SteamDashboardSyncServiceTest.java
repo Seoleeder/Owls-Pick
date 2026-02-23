@@ -1,9 +1,9 @@
 package io.github.seoleeder.owls_pick.service.client.steam;
 
-import io.github.seoleeder.owls_pick.client.steamweb.SteamDataCollector;
-import io.github.seoleeder.owls_pick.client.steamweb.dto.Dashboard.SteamDashboardResponse;
-import io.github.seoleeder.owls_pick.client.steamweb.dto.Dashboard.SteamDashboardResponse.Rank;
-import io.github.seoleeder.owls_pick.common.config.properties.SteamProperties;
+import io.github.seoleeder.owls_pick.client.steam.SteamDataCollector;
+import io.github.seoleeder.owls_pick.client.steam.dto.Dashboard.SteamDashboardResponse;
+import io.github.seoleeder.owls_pick.client.steam.dto.Dashboard.SteamDashboardResponse.Rank;
+import io.github.seoleeder.owls_pick.global.config.properties.SteamProperties;
 import io.github.seoleeder.owls_pick.entity.game.Dashboard;
 import io.github.seoleeder.owls_pick.entity.game.Game;
 import io.github.seoleeder.owls_pick.entity.game.StoreDetail;

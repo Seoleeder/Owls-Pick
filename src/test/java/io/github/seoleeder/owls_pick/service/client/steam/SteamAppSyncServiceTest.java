@@ -1,10 +1,10 @@
 package io.github.seoleeder.owls_pick.service.client.steam;
 
-import io.github.seoleeder.owls_pick.client.steamweb.SteamDataCollector;
-import io.github.seoleeder.owls_pick.client.steamweb.dto.SteamAppListResponse;
-import io.github.seoleeder.owls_pick.client.steamweb.dto.SteamAppListResponse.Response;
-import io.github.seoleeder.owls_pick.client.steamweb.dto.SteamAppListResponse.Response.App;
-import io.github.seoleeder.owls_pick.client.steamweb.util.SteamGameUrlBuilder;
+import io.github.seoleeder.owls_pick.client.steam.SteamDataCollector;
+import io.github.seoleeder.owls_pick.client.steam.dto.SteamAppListResponse;
+import io.github.seoleeder.owls_pick.client.steam.dto.SteamAppListResponse.Response;
+import io.github.seoleeder.owls_pick.client.steam.dto.SteamAppListResponse.Response.App;
+import io.github.seoleeder.owls_pick.client.steam.util.SteamGameUrlBuilder;
 import io.github.seoleeder.owls_pick.entity.game.Game;
 import io.github.seoleeder.owls_pick.entity.game.StoreDetail;
 import io.github.seoleeder.owls_pick.repository.GameRepository;
