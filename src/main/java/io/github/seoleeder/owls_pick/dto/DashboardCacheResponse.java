@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
 
 @Builder
 @Schema(name = "대시보드 응답용 DTO", description = "스팀 대시보드 데이터 응답용 & 캐싱에 쓰이는 DTO")
-public record DashboardCacheDto(
+public record DashboardCacheResponse(
 
         @Schema(description = "게임 ID", example = "1031")
         Long gameId,

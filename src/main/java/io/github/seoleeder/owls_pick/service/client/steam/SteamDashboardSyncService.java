@@ -10,7 +10,7 @@ import io.github.seoleeder.owls_pick.entity.game.Game;
 import io.github.seoleeder.owls_pick.entity.game.StoreDetail;
 import io.github.seoleeder.owls_pick.repository.DashboardRepository;
 import io.github.seoleeder.owls_pick.repository.StoreDetailRepository;
-import io.github.seoleeder.owls_pick.service.DashboardCacheService;
+import io.github.seoleeder.owls_pick.service.DashboardService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
@@ -36,7 +36,7 @@ public class SteamDashboardSyncService {
     private final DashboardRepository dashboardRepository;
 
     // Redis 캐시 관리용
-    private final DashboardCacheService dashboardCacheService;
+    private final DashboardService dashboardService;
 
     // 트랜잭션 수동 제어용
     private final TransactionTemplate transactionTemplate;
@@ -47,14 +47,14 @@ public class SteamDashboardSyncService {
             SteamDataCollector collector,
             StoreDetailRepository storeDetailRepository,
             DashboardRepository dashboardRepository,
-            DashboardCacheService dashboardCacheService,
+            DashboardService dashboardService,
             TransactionTemplate transactionTemplate,
             SteamProperties props
     ) {
         this.collector = collector;
         this.storeDetailRepository = storeDetailRepository;
         this.dashboardRepository = dashboardRepository;
-        this.dashboardCacheService = dashboardCacheService;
+        this.dashboardService = dashboardService;
         this.transactionTemplate = transactionTemplate;
         this.props = props;
     }
@@ -286,7 +286,7 @@ public class SteamDashboardSyncService {
                 }
 
                 //Redis  캐시 갱신
-                dashboardCacheService.refreshCache(type);
+                dashboardService.refreshCache(type);
             });
         } catch (DataAccessException e) {
             // 트랜잭션 롤백 후 여기서 잡힘

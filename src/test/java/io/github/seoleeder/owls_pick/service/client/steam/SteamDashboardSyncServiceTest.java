@@ -9,7 +9,7 @@ import io.github.seoleeder.owls_pick.entity.game.Game;
 import io.github.seoleeder.owls_pick.entity.game.StoreDetail;
 import io.github.seoleeder.owls_pick.repository.DashboardRepository;
 import io.github.seoleeder.owls_pick.repository.StoreDetailRepository;
-import io.github.seoleeder.owls_pick.service.DashboardCacheService;
+import io.github.seoleeder.owls_pick.service.DashboardService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -39,7 +39,7 @@ class SteamDashboardSyncServiceTest {
     @Mock private SteamDataCollector collector;
     @Mock private StoreDetailRepository storeDetailRepository;
     @Mock private DashboardRepository dashboardRepository;
-    @Mock private DashboardCacheService dashboardCacheService;
+    @Mock private DashboardService dashboardService;
     @Mock private TransactionTemplate transactionTemplate;
 
     @BeforeEach
@@ -56,7 +56,7 @@ class SteamDashboardSyncServiceTest {
                 collector,
                 storeDetailRepository,
                 dashboardRepository,
-                dashboardCacheService,
+                dashboardService,
                 transactionTemplate,
                 props
         );
@@ -105,7 +105,7 @@ class SteamDashboardSyncServiceTest {
         }));
 
         // 2. Redis 캐시 갱신 호출 검증
-        verify(dashboardCacheService).refreshCache(Dashboard.CurationType.CONCURRENT_PLAYER);
+        verify(dashboardService).refreshCache(Dashboard.CurationType.CONCURRENT_PLAYER);
     }
 
     @Test
@@ -148,7 +148,7 @@ class SteamDashboardSyncServiceTest {
         }));
 
         // 3. 캐시 갱신 검증
-        verify(dashboardCacheService).refreshCache(Dashboard.CurationType.WEEKLY_TOP_SELLER);
+        verify(dashboardService).refreshCache(Dashboard.CurationType.WEEKLY_TOP_SELLER);
     }
 
     @Test
