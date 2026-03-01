@@ -1,4 +1,4 @@
-package io.github.seoleeder.owls_pick.service;
+package io.github.seoleeder.owls_pick.service.auth;
 
 import io.github.seoleeder.owls_pick.client.oauth.factory.SocialAuthFactory;
 import io.github.seoleeder.owls_pick.client.oauth.provider.SocialAuthProvider;
@@ -39,6 +39,10 @@ public class AuthService {
     private final RedisTemplate<String, String> redisTemplate;
     private final JwtProperties jwtProperties;
 
+    /**
+     * [소셜 로그인 로직]
+     * 인가 코드와 state 값을 받아서 로그인 처리 및 JWT 토큰 발급
+     * */
     @Transactional
     public LoginResponse login(String providerName, String code, String state) {
         // 1. 소셜 유저 정보 가져오기
@@ -90,6 +94,10 @@ public class AuthService {
 
     }
 
+    /**
+     * [회원가입 로직]
+     * 로그인 과정에서 사용자 정보가 존재하지 않으면 회원가입 처리
+     * */
     private SocialAccount join(SocialUserResponse userInfo, SocialAccount.Provider provider) {
         //사용자의 이메일 정보가 존재하지 않으면 임의의 문자열로 대체
         String email = userInfo.email() != null ? userInfo.email() : "no-email-" + userInfo.providerId();
@@ -113,6 +121,7 @@ public class AuthService {
     }
 
     /**
+     * [Access 토큰 재발급]
      * Refresh Token을 받아 검증 -> 새로운 토큰 발급
      * */
     @Transactional
@@ -205,7 +214,7 @@ public class AuthService {
     }
 
     /**
-     *  [개발용 백도어] 소셜 서비스와의 통신 없이 이메일만으로 강제 가입/로그인 및 토큰 발급
+     *  [개발용 백도어 로그인] 소셜 서비스와의 통신 없이 이메일만으로 강제 가입/로그인 및 토큰 발급
      */
     @Transactional
     public LoginResponse bypassLogin(String email) {
@@ -245,5 +254,42 @@ public class AuthService {
                 .nickname(user.getName())
                 .email(user.getEmail())
                 .build();
+    }
+
+
+    /**
+     * [개발용 백도어 로그아웃]
+     * 이메일만으로 Redis에서 강제 로그아웃
+     */
+    @Transactional
+    public void bypassLogout(String email) {
+        userRepository.findByEmail(email).ifPresent(user -> {
+            logout(user.getId().toString());
+            log.info("[백도어 로그아웃] email: {} 완료", email);
+        });
+    }
+
+    /**
+     * [소셜 연동 해제 웹훅]
+     * 외부에서 카카오/네이버 연결을 끊었을 때 처리
+     */
+    @Transactional
+    public void unlinkSocialAccount(String providerName, String providerId) {
+        log.info("[Social Unlink] {} 계정 연결 끊기 웹훅 수신. Provider ID: {}", providerName, providerId);
+
+        try {
+            SocialAccount.Provider provider = SocialAccount.Provider.valueOf(providerName.toUpperCase());
+
+            socialAccountRepository.findByProviderAndProviderId(provider, providerId)
+                    .ifPresent(socialAccount -> {
+                        User user = socialAccount.getUser();
+                        // 회원 탈퇴(withdraw) 로직 활용 탈퇴 처리
+                        withdraw(user.getId().toString());
+                        log.info("[Social Unlink] {} 유저(Provider ID: {}) 데이터 영구 삭제 완료", providerName, providerId);
+                    });
+        } catch (Exception e) {
+            log.error("[Social Unlink] 웹훅 처리 중 오류 발생: {}", e.getMessage());
+            // 웹훅 응답은 무조건 200 OK로 줘야 함
+        }
     }
 }

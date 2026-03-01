@@ -9,7 +9,7 @@ import io.github.seoleeder.owls_pick.global.config.AdminAuthorizationInterceptor
 import io.github.seoleeder.owls_pick.global.config.properties.AdminProperties;
 import io.github.seoleeder.owls_pick.global.security.config.properties.JwtProperties;
 import io.github.seoleeder.owls_pick.global.security.jwt.JwtTokenProvider;
-import io.github.seoleeder.owls_pick.service.AuthService;
+import io.github.seoleeder.owls_pick.service.auth.AuthService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

@@ -24,7 +24,7 @@ public class Game {
     @Column(unique = true)
     private Long igdbId;
 
-    @Column(unique = true)
+    @Column
     private String itadId;
 
     @Column(nullable = false)
@@ -44,10 +44,10 @@ public class Game {
     @Column(columnDefinition = "text[]")
     private List<String> platform = new ArrayList<>();
 
-    @Column
+    @Column(columnDefinition = "TEXT")
     private String description;
 
-    @Column
+    @Column(columnDefinition = "TEXT")
     private String storyline;
 
     @Column
@@ -62,7 +62,7 @@ public class Game {
     @JdbcTypeCode(SqlTypes.ARRAY)
     @Builder.Default
     @Column(columnDefinition = "text[]")
-    private List<String> mode = new ArrayList<>();;
+    private List<String> mode = new ArrayList<>();
 
     @JdbcTypeCode(SqlTypes.ARRAY)
     @Builder.Default

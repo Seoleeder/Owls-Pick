@@ -33,6 +33,7 @@ public class NaverAuthProvider extends AbstractSocialProvider {
         body.add("client_secret", registration.clientSecret());
         body.add("code", code);
         body.add("state", state); // 네이버는 state 필수
+        body.add("redirect_uri", "http://localhost:8080/api/auth/login/naver");
 
         try {
             return restClient.post()
@@ -86,7 +87,7 @@ public class NaverAuthProvider extends AbstractSocialProvider {
 
         // 이메일 데이터가 없는 경우 처리
         if (naverResponse.response.email == null) {
-            log.info("[Kakao OAuth] 유저가 이메일 제공을 거부했거나 값이 없습니다. (sub: {})", claims.get("sub"));
+            log.info("[Naver OAuth] 유저가 이메일 제공을 거부했거나 값이 없습니다. (sub: {})", claims.get("sub"));
         }
 
         // provider id와 사용자 정보 결합
@@ -97,3 +98,4 @@ public class NaverAuthProvider extends AbstractSocialProvider {
         );
     }
 }
+

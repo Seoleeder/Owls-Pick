@@ -21,7 +21,9 @@ public enum ErrorCode {
     EXPIRED_TOKEN(40102, HttpStatus.UNAUTHORIZED,"JWT 토큰이 만료되었습니다"),
     INVALID_TOKEN(40103, HttpStatus.UNAUTHORIZED, "유효하지 않은 토큰입니다."),
     MALFORMED_TOKEN(40104, HttpStatus.UNAUTHORIZED, "잘못된 형식의 토큰입니다."),
-    REVOKED_REFRESH_TOKEN(40405,HttpStatus.UNAUTHORIZED, "폐기되었거나 만료된 리프레시 토큰입니다."),
+    REVOKED_REFRESH_TOKEN(40105,HttpStatus.UNAUTHORIZED, "폐기되었거나 만료된 리프레시 토큰입니다."),
+    INVALID_SIGNATURE(40106,HttpStatus.UNAUTHORIZED, "서명이 유효하지 않습니다."),
+
 
     // 404 Not Found
     NOT_FOUND_END_POINT(40400, HttpStatus.NOT_FOUND, "존재하지 않는 API입니다."),

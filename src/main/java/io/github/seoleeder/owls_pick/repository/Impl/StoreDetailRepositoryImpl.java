@@ -103,4 +103,21 @@ public class StoreDetailRepositoryImpl implements StoreDetailRepositoryCustom {
                 )
                 .fetch();
     }
+
+    @Override
+    public List<StoreDetail> findValidGamesMissingItadId(StoreDetail.StoreName storeName, Long lastId, int limit) {
+        return queryFactory
+                .selectFrom(storeDetail)
+                .join(storeDetail.game, game).fetchJoin() // N+1 방지
+                .where(
+                        storeDetail.storeName.eq(storeName),
+                        storeDetail.storeAppId.isNotNull(),
+                        game.itadId.isNull(),
+                        game.firstRelease.isNotNull(), // IGDB 출시일 정보가 있는 유효한 게임만 필터링
+                        lastId > 0 ? storeDetail.id.gt(lastId) : null // 커서 조건 (0이면 처음부터 조회)
+                )
+                .orderBy(storeDetail.id.asc()) // ASC 정렬
+                .limit(limit)
+                .fetch();
+    }
 }

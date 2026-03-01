@@ -46,9 +46,12 @@ public class SecurityConfig {
                         // 로그인, 회원가입, swagger, error 페이지 등 통과
                         .requestMatchers(
                                 "/",
+                                "/admin/**",
                                 "/api/auth/login/**",
+                                "/api/auth/authorize/**",
                                 "/api/auth/reissue",
-                                "/api/dev/auth/",
+                                "/api/dev/auth/**",
+                                "/api/webhook/**",
                                 "/swagger-ui.html",
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**",

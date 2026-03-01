@@ -13,6 +13,7 @@ import io.github.seoleeder.owls_pick.global.security.config.properties.JwtProper
 import io.github.seoleeder.owls_pick.global.security.jwt.JwtTokenProvider;
 import io.github.seoleeder.owls_pick.repository.SocialAccountRepository;
 import io.github.seoleeder.owls_pick.repository.UserRepository;
+import io.github.seoleeder.owls_pick.service.auth.AuthService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

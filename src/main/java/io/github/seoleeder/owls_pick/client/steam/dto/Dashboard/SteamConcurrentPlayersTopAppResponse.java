@@ -5,12 +5,16 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 
 public record SteamConcurrentPlayersTopAppResponse(
-        @JsonProperty("last_update") Long updatedAt,
-        @JsonProperty("ranks") List<Rank> ranks
+        Response response
 ) {
-    public record Rank(
-            @JsonProperty("rank") int rank,
-            @JsonProperty("appid") Long appid
-    ) {
+    public record Response(
+            @JsonProperty("last_update") Long updatedAt,
+            @JsonProperty("ranks") List<Rank> ranks
+    ){
+        public record Rank(
+                @JsonProperty("rank") int rank,
+                @JsonProperty("appid") Long appid
+        ) {
+        }
     }
 }

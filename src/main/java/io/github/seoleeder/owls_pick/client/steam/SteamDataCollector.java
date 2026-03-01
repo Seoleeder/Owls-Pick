@@ -203,13 +203,13 @@ public class SteamDataCollector {
     public SteamDashboardResponse collectConcurrentPlayersTopApp(String countryCode) {
         SteamConcurrentPlayersTopAppResponse response = steamClient.getConcurrentPlayersTopApp(countryCode);
 
-        if (response == null || response.ranks() == null) {
+        if (response == null || response.response() == null || response.response().ranks() == null) {
             return null;
         }
 
-        LocalDateTime updateAt = TimestampUtils.toLocalDateTime(response.updatedAt());
+        LocalDateTime updateAt = TimestampUtils.toLocalDateTime(response.response().updatedAt());
 
-        List<SteamDashboardResponse.Rank> ranks = response.ranks().stream()
+        List<SteamDashboardResponse.Rank> ranks = response.response().ranks().stream()
                 .map(r -> new SteamDashboardResponse.Rank(r.rank(), r.appid()))
                 .toList();
 
@@ -223,13 +223,13 @@ public class SteamDataCollector {
     public SteamDashboardResponse collectMostPlayedApp(String countryCode) {
         SteamMostPlayedAppResponse response = steamClient.getMostPlayedApp(countryCode);
 
-        if (response == null || response.ranks() == null) {
+        if (response == null || response.response().ranks() == null) {
             return null;
         }
 
-        LocalDateTime updateAt = TimestampUtils.toLocalDateTime(response.updatedAt());
+        LocalDateTime updateAt = TimestampUtils.toLocalDateTime(response.response().updatedAt());
 
-        List<SteamDashboardResponse.Rank> ranks = response.ranks().stream()
+        List<SteamDashboardResponse.Rank> ranks = response.response().ranks().stream()
                 .map(r -> new SteamDashboardResponse.Rank(r.rank(), r.appid()))
                 .toList();
 

@@ -14,6 +14,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.util.UriComponentsBuilder;
+
+import java.net.URI;
 
 @Component
 @RequiredArgsConstructor
@@ -115,14 +118,18 @@ public class SteamClient{
         // DTO -> JSON 변환
         String jsonParam = queryParamSerializer.serialize(requestDto);
 
+        // URI 객체를 직접 생성하여 전달
+        // Not enough variable values 에러 방지
+        URI uri = UriComponentsBuilder
+                .fromHttpUrl("https://" + STEAM_WEB_API_URL)
+                .path("IStoreTopSellersService/GetWeeklyTopSellers/v1")
+                .queryParam("key", apiKey)
+                .queryParam("input_json", jsonParam)
+                .build()
+                .toUri();
+
         return restClient.get()
-                .uri( uriBuilder -> uriBuilder
-                        .scheme("https")
-                        .host(STEAM_WEB_API_URL)
-                        .path("IStoreTopSellersService/GetWeeklyTopSellers/v1")
-                        .queryParam("key", apiKey)
-                        .queryParam("input_json", jsonParam)
-                        .build())
+                .uri(uri)
                 .retrieve()
                 .body(SteamWeeklyTopSellersResponse.class);
     }
@@ -136,7 +143,7 @@ public class SteamClient{
         return restClient.get()
                 .uri(uriBuilder -> uriBuilder
                         .scheme("https")
-                        .host(STEAM_STORE_API_URL)
+                        .host(STEAM_WEB_API_URL)
                         .path("ISteamChartsService/GetMonthTopAppReleases/v1")
                         .queryParam("key", apiKey)
                         .queryParam("rtime_month", rtimeMonth)
@@ -154,7 +161,7 @@ public class SteamClient{
         return restClient.get()
                 .uri(uriBuilder -> uriBuilder
                         .scheme("https")
-                        .host(STEAM_STORE_API_URL)
+                        .host(STEAM_WEB_API_URL)
                         .path("ISteamChartsService/GetYearTopAppReleases/v1")
                         .queryParam("key", apiKey)
                         .queryParam("rtime_year", rtimeYear)
@@ -176,14 +183,18 @@ public class SteamClient{
         // DTO -> JSON 변환
         String jsonParam = queryParamSerializer.serialize(requestDto);
 
+        // URI 객체를 직접 생성하여 전달
+        // Not enough variable values 에러 방지
+        URI uri = UriComponentsBuilder
+                .fromHttpUrl("https://" + STEAM_WEB_API_URL)
+                .path("ISteamChartsService/GetGamesByConcurrentPlayers/v1")
+                .queryParam("key", apiKey)
+                .queryParam("input_json", jsonParam)
+                .build()
+                .toUri();
+
         return restClient.get()
-                .uri( uriBuilder -> uriBuilder
-                        .scheme("https")
-                        .host(STEAM_WEB_API_URL)
-                        .path("ISteamChartsService/GetGamesByConcurrentPlayers/v1")
-                        .queryParam("key", apiKey)
-                        .queryParam("input_json", jsonParam)
-                        .build())
+                .uri(uri)
                 .retrieve()
                 .body(SteamConcurrentPlayersTopAppResponse.class);
     }
@@ -201,14 +212,18 @@ public class SteamClient{
         // DTO -> JSON 변환
         String jsonParam = queryParamSerializer.serialize(requestDto);
 
+        // URI 객체를 직접 생성하여 전달
+        // Not enough variable values 에러 방지
+        URI uri = UriComponentsBuilder
+                .fromHttpUrl("https://" + STEAM_WEB_API_URL)
+                .path("ISteamChartsService/GetMostPlayedGames/v1/")
+                .queryParam("key", apiKey)
+                .queryParam("input_json", jsonParam)
+                .build()
+                .toUri();
+
         return restClient.get()
-                .uri( uriBuilder -> uriBuilder
-                        .scheme("https")
-                        .host(STEAM_WEB_API_URL)
-                        .path("ISteamChartsService/GetMostPlayedGames/v1/")
-                        .queryParam("key", apiKey)
-                        .queryParam("input_json", jsonParam)
-                        .build())
+                .uri(uri)
                 .retrieve()
                 .body(SteamMostPlayedAppResponse.class);
     }

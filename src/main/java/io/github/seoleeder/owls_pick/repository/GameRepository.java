@@ -12,8 +12,9 @@ import java.util.Optional;
 public interface GameRepository extends JpaRepository<Game, Long>, GameRepositoryCustom {
 
     //ITAD ID가 존재하지 않는 게임 조회
+    //null이거나 NONE이거나
     //ITAD ID 값을 엔티티에 업데이트하기 위함
-    List<Game> findByItadIdIsNull();
+    List<Game> findByItadIdIsNotNullAndItadIdNot(String excludedValue);
 
     //ITAD ID가 있는 게임 조회
     //가격 댕신 대상 조회하기 위함

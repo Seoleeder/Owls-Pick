@@ -2,11 +2,10 @@ package io.github.seoleeder.owls_pick.controller.auth;
 
 import io.github.seoleeder.owls_pick.dto.auth.LoginResponse;
 import io.github.seoleeder.owls_pick.global.response.CommonResponse;
-import io.github.seoleeder.owls_pick.service.AuthService;
+import io.github.seoleeder.owls_pick.service.auth.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
-import org.springframework.context.annotation.Profile;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;

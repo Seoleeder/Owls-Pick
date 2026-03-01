@@ -2,7 +2,7 @@ package io.github.seoleeder.owls_pick.client.itad.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 
 public record ITADPriceResponse(
@@ -11,11 +11,11 @@ public record ITADPriceResponse(
 ) {
     public record Deal (
             Shop shop,
-            Price currentPrice,
+            @JsonProperty("price") Price currentPrice,
             @JsonProperty("regular") OriginalPrice originalPrice,
-            StoreLow storelow,
+            @JsonProperty("storeLow") StoreLow storeLow,
             Integer cut,
-            @JsonProperty("expiry") LocalDateTime expiryDate,
+            @JsonProperty("expiry") OffsetDateTime expiryDate,
             String url
     ){
         public record Shop(
