@@ -43,10 +43,12 @@ public class IGDBSyncService {
     public void backfillAllGames() {
         log.info("Starting IGDB Full Backfill (ID based)...");
 
-        //DB에서 가장 높은 IGDB ID를 조회해서 해당 위치부터 시작
-        long lastId = gameRepository.findTopByOrderByIgdbIdDesc()
-                .map(Game::getIgdbId)
-                .orElse(0L);
+//        //DB에서 가장 높은 IGDB ID를 조회해서 해당 위치부터 시작
+//        long lastId = gameRepository.findTopByOrderByIgdbIdDesc()
+//                .map(Game::getIgdbId)
+//                .orElse(0L);
+
+        long lastId = 0L;
 
         log.info("Resuming backfill from ID: {}", lastId);
 
@@ -273,6 +275,9 @@ public class IGDBSyncService {
         List<LanguageSupport> languages = new ArrayList<>();
         List<GameCompany> gameCompanies = new ArrayList<>();
 
+        //GameCompanyId 중복 키 방지
+        Map<GameCompanyId, GameCompany> gameCompanyMap = new HashMap<>();
+
         // 이번 배치에 등장하는 모든 회사 이름 수집 (중복 제거)
         Set<String> companyNames = new HashSet<>();
         for (IGDBGameDetailResponse dto : details) {
@@ -316,10 +321,14 @@ public class IGDBSyncService {
             IGDBGameDetailResponse dto = detailMap.get(game.getIgdbId());
             if (dto == null) continue;
 
+            // gameProxy (영속성 컨텍스트가 관리하는 가짜 객체) 생성
+            // ID만 연결하는 작업이므로 DB 조회를 하지 X
+            Game gameProxy = gameRepository.getReferenceById(game.getId());
+
             // Tags (1:1)
             // 장르, 테마, 키워드 이름 정보만 추출해서 저장
             tags.add(Tag.builder()
-                    .game(game)
+                    .game(gameProxy)
                     .genres(extractValues(dto.genres(), IGDBGameDetailResponse.Genre::name))
                     .themes(extractValues(dto.themes(), IGDBGameDetailResponse.Theme::name))
                     .keywords(extractValues(dto.keywords(), IGDBGameDetailResponse.Keyword::name))
@@ -329,7 +338,7 @@ public class IGDBSyncService {
             if (dto.screenshots() != null) {
                 dto.screenshots().forEach(s -> screenshots.add(
                         Screenshot.builder()
-                                .game(game).imageId(s.imageId()).width(s.width()).height(s.height())
+                                .game(gameProxy).imageId(s.imageId()).width(s.width()).height(s.height())
                                 .build()));
             }
 
@@ -355,7 +364,7 @@ public class IGDBSyncService {
                     Set<String> types = entry.getValue();
 
                     languages.add(LanguageSupport.builder()
-                            .game(game)
+                            .game(gameProxy)
                             .language(langName)
                             .voiceSupport(types.contains("Audio"))
                             .subtitle(types.contains("Subtitles"))
@@ -372,12 +381,25 @@ public class IGDBSyncService {
                         Company company = savedCompanyMap.get(companyName);
 
                         if (company != null) {
-                            gameCompanies.add(GameCompany.builder()
-                                    .game(game)
-                                    .company(company)
-                                    .isDeveloper(c.isDeveloper())
-                                    .isPublisher(c.isPublisher())
-                                    .build());
+                            // 복합키 생성 (명시적으로 ID 주입)
+                            GameCompanyId compoundId = new GameCompanyId(gameProxy.getId(), company.getId());
+
+                            // 맵을 이용해 이미 같은 키가 있으면 기존 객체의 상태만 업데이트
+                            gameCompanyMap.compute(compoundId, (id, existing) -> {
+                                if (existing == null) {
+                                    return GameCompany.builder()
+                                            .id(id)
+                                            .game(gameProxy)
+                                            .company(company)
+                                            .isDeveloper(c.isDeveloper())
+                                            .isPublisher(c.isPublisher())
+                                            .build();
+                                } else {
+                                    // 이미 존재하면 개발사/퍼블리셔 여부를 추가로 체크 (병합)
+                                    existing.updateRoles(c.isDeveloper(), c.isPublisher());
+                                    return existing;
+                                }
+                            });
                         }
                     }
                 });
@@ -388,6 +410,7 @@ public class IGDBSyncService {
 
         // 기존 연관 데이터 삭제
         if (!games.isEmpty()) {
+            tagRepository.deleteByGameIn(games);
             screenshotRepository.deleteByGameIn(games);
             languageSupportRepository.deleteByGameIn(games);
             gameCompanyRepository.deleteByGameIn(games);
@@ -426,8 +449,9 @@ public class IGDBSyncService {
         if (dto.externalApps() == null) return null;
         return dto.externalApps().stream()
                 .filter(ext -> ext.storeId() == 1) // Steam Category
+                .map(IGDBGameSummaryResponse.ExternalApp::storeAppid) // steam app id 추출
+                .filter(storeAppId -> storeAppId != null && !storeAppId.isBlank())   // 빈 문자열 제외
                 .findFirst()
-                .map(ext -> String.valueOf(ext.storeAppid()))
                 .orElse(null);
     }
 
@@ -472,6 +496,10 @@ public class IGDBSyncService {
                 esrb = ratingValue;
             } else if (orgId == 5L) {   // GRAC (Korea)
                 kr = ratingValue;
+            } else {
+                long catId = rating.ratingCategories().id();
+                if (catId >= 1 && catId <= 6) esrb = ratingValue;
+                else if (catId >= 24 && catId <= 32) kr = ratingValue;
             }
 
             // 두 값을 모두 찾았으면 루프 종료 (최적화)

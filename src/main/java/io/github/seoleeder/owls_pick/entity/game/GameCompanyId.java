@@ -7,7 +7,7 @@ import java.io.Serializable;
 @Embeddable
 @Getter
 @Builder
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@NoArgsConstructor
 @AllArgsConstructor
 @EqualsAndHashCode // 복합키 식별을 위해 필수
 public class GameCompanyId implements Serializable {

@@ -25,4 +25,8 @@ public interface StoreDetailRepositoryCustom {
 
     // 특정 상점(StoreName)의 게임 가격 정보 목록 조회
     List<StoreDetail> findDetailsByStoreAndGameIds(StoreName storeName, List<Long> gameIds);
+
+    // 게임 테이블에서 출시일 정보가 존재하면서 ITAD ID가 없는 게임 조회
+    List<StoreDetail> findValidGamesMissingItadId(StoreName storeName, Long lastId, int limit);
+
 }

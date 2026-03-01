@@ -3,7 +3,7 @@ package io.github.seoleeder.owls_pick.controller.auth;
 import io.github.seoleeder.owls_pick.client.oauth.factory.SocialAuthFactory;
 import io.github.seoleeder.owls_pick.dto.auth.LoginResponse;
 import io.github.seoleeder.owls_pick.global.response.CommonResponse;
-import io.github.seoleeder.owls_pick.service.AuthService;
+import io.github.seoleeder.owls_pick.service.auth.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
@@ -17,6 +17,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.HashMap;
+import java.util.Map;
 
 @Validated // 파라미터 유효성 검사 활성화
 @RestController
@@ -57,13 +60,28 @@ public class AuthController {
                             """)))
             }
     )
-    @GetMapping("/login/{provider}")
+    @GetMapping("/authorize/{provider}")
     public CommonResponse<String> getAuthCodeUrl(
             @Parameter(description = "소셜 제공자 (kakao, google, naver)", required = true)
             @PathVariable @NotBlank String provider) {
 
         String authCodeUrl = socialAuthFactory.getProvider(provider).getAuthCodeUrl();
         return CommonResponse.ok(authCodeUrl);
+    }
+
+    @Operation(summary = "소셜 콜백 수신", description = "브라우저 리다이렉트를 통해 인가 코드 수신")
+    @GetMapping("/login/{provider}")
+    public CommonResponse<Map<String, String>> callback(
+            @PathVariable String provider,
+            @RequestParam String code,
+            @RequestParam(required = false) String state) {
+
+        Map<String, String> authData = new HashMap<>();
+        authData.put("provider", provider);
+        authData.put("code", code);
+        authData.put("state", state != null ? state : "");
+
+        return CommonResponse.ok(authData);
     }
 
     @Operation(

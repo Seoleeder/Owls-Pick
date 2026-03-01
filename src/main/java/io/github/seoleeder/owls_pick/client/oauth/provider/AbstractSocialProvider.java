@@ -3,6 +3,7 @@ package io.github.seoleeder.owls_pick.client.oauth.provider;
 
 import io.github.seoleeder.owls_pick.global.config.properties.SocialProperties;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import java.util.UUID;
 
@@ -33,11 +34,14 @@ public abstract class AbstractSocialProvider implements SocialAuthProvider {
         //매번 고유의 랜덤 문자열을 생성하여 state 값으로 활용
         String state = UUID.randomUUID().toString();
 
-        return providerConfig.authorizationUri() +
-                "?client_id=" + registration.clientId() +
-                "&redirect_uri=" + registration.redirectUri() +
-                "&response_type=code" +
-                "&scope=" + String.join(" ", registration.scope()) +
-                "&state=" + state;
+        return UriComponentsBuilder.fromHttpUrl(providerConfig.authorizationUri())
+                .queryParam("client_id", registration.clientId())
+                .queryParam("redirect_uri", registration.redirectUri())
+                .queryParam("response_type", "code")
+                .queryParam("scope", String.join(" ", registration.scope()))
+                .queryParam("state", state)
+                .build()
+                .encode() // 인코딩 필수
+                .toUriString();
     }
 }

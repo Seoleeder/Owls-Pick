@@ -26,7 +26,7 @@ public record IGDBGameSummaryResponse(
 
     //해당 게임의 스토어 내 앱 ID 추출
     public record ExternalApp(
-            @JsonProperty("id") Long storeAppid,
+            @JsonProperty("uid") String storeAppid,
             @JsonProperty("external_game_source") int storeId
     ){}
 

@@ -7,6 +7,7 @@ import io.github.seoleeder.owls_pick.global.response.CustomException;
 import io.github.seoleeder.owls_pick.global.response.ErrorCode;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
+import org.springframework.stereotype.Component;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClientResponseException;
@@ -14,6 +15,7 @@ import org.springframework.web.client.RestClientResponseException;
 import java.util.Map;
 
 @Slf4j
+@Component
 public class GoogleAuthProvider extends  AbstractSocialProvider{
     private final OidcValidator oidcValidator;
 

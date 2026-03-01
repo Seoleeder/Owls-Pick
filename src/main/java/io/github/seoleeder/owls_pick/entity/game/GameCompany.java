@@ -28,4 +28,13 @@ public class GameCompany {
 
     private boolean isPublisher;
 
+    public void updateRoles(boolean isDeveloper, boolean isPublisher) {
+        if (isDeveloper) {
+            this.isDeveloper = true;
+        }
+        if (isPublisher) {
+            this.isPublisher = true;
+        }
+    }
+
 }

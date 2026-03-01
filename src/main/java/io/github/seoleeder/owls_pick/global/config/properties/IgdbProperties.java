@@ -7,5 +7,6 @@ public record IgdbProperties(
         String clientId,
         String clientSecret,
         String baseUrl,
-        String authUrl
+        String authUrl,
+        String imageUrl
 ) {}

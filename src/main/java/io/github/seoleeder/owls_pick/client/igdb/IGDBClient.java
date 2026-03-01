@@ -37,7 +37,9 @@ public class IGDBClient {
 
         String requestBody = IGDBQueryBuilder.create()
                 .fields(
+                        "external_games.uid",
                         "external_games.external_game_source",
+                        "age_ratings.organization.name",
                         "age_ratings.rating_category.rating",
                         "game_type.type",
                         "cover.image_id",
@@ -54,13 +56,6 @@ public class IGDBClient {
                         "hypes"
                 )
                 .where("external_games.external_game_source = 1")
-                .where("first_release_date != null")
-                .where("genres != null")
-                .where("themes != null")
-                .where("summary != null")
-                .where("game_type.type != null")
-                .where("cover.image_id != null")
-                .where("game_status.status != null")
                 .where("id > " + lastId)
                 .sort("id asc")
                 .limit(limit) // default : 10, max : 500
@@ -80,6 +75,7 @@ public class IGDBClient {
 
         String requestBody = IGDBQueryBuilder.create()
                 .fields(
+                        "external_games.uid",
                         "external_games.external_game_source",
                         "age_ratings.organization.name",
                         "age_ratings.rating_category.rating",
@@ -98,13 +94,6 @@ public class IGDBClient {
                         "hypes"
                 )
                 .where("external_games.external_game_source = 1")
-                .where("first_release_date != null")
-                .where("genres != null")
-                .where("themes != null")
-                .where("summary != null")
-                .where("game_type.type != null")
-                .where("cover.image_id != null")
-                .where("game_status.status != null")
                 .where("updated_at > " + lastTimestamp)
                 .sort("updated_at asc")
                 .limit(limit) // default : 10, max : 500
@@ -127,6 +116,7 @@ public class IGDBClient {
                 .fields(
 
                         //매핑용
+                        "external_games.uid",
                         "external_games.external_game_source",
 
                         //game_tag 데이터
@@ -154,12 +144,6 @@ public class IGDBClient {
 
                 )
                 .where("external_games.external_game_source = 1")
-                .where("genres != null")
-                .where("themes != null")
-                .where("summary != null")
-                .where("game_type.type != null")
-                .where("cover.image_id != null")
-                .where("game_status.status != null")
                 .where("id = (" + idString + ")")
                 .sort("id asc")
                 .limit(limit)
@@ -175,7 +159,7 @@ public class IGDBClient {
                 .uri( uriBuilder -> uriBuilder
                         .scheme("https")
                         .host(props.baseUrl())
-                        .path("games")
+                        .path("/v4/games")
                         .build())
                 .header("Client-ID", props.clientId())
                 .header("Authorization", "Bearer " + authManager.getAccessToken())
