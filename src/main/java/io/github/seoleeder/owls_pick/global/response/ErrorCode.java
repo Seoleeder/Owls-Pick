@@ -12,8 +12,9 @@ public enum ErrorCode {
 
     //400 Bad Request
     INVALID_REQUEST(40000, HttpStatus.BAD_REQUEST, "잘못된 요청입니다"),
-    UNSUPPORTED_PROVIDER(40001, HttpStatus.BAD_REQUEST, "지원하지 않는 소셜 로그인 제공자입니다."),
-    INVALID_AUTHORIZATION_CODE(40002, HttpStatus.BAD_REQUEST, "인가 코드가 만료되었거나 유효하지 않습니다. "),
+    INVALID_PARAMETER(40001, HttpStatus.BAD_REQUEST, "잘못된 요청 파라미터입니다."),
+    UNSUPPORTED_PROVIDER(40002, HttpStatus.BAD_REQUEST, "지원하지 않는 소셜 로그인 제공자입니다."),
+    INVALID_AUTHORIZATION_CODE(40003, HttpStatus.BAD_REQUEST, "인가 코드가 만료되었거나 유효하지 않습니다. "),
 
     // 401 Unauthorized
     UNAUTHORIZED(40100, HttpStatus.UNAUTHORIZED, "인증이 유효하지 않습니다"),

@@ -89,6 +89,12 @@ public class SteamDashboardSyncService {
             sleep(100);
         }
 
+        // 타입별 최신 데이터로 Redis 캐시 갱신
+        log.info("Refreshing all dashboard caches after backfill...");
+        for (CurationType type : CurationType.values()) {
+            dashboardService.refreshCache(type);
+        }
+
         log.info("Historical Data Backfill Completed!");
     }
 
@@ -114,6 +120,7 @@ public class SteamDashboardSyncService {
     public void syncScheduledWeekly() {
         LocalDate lastMonday = LocalDate.now().with(TemporalAdjusters.previousOrSame(DayOfWeek.TUESDAY));
         processWeeklyCollection(toEpoch(lastMonday), 1, props.dashboard().pageCount());
+        dashboardService.refreshCache(CurationType.WEEKLY_TOP_SELLER);
         log.info("Weekly Top Sellers Dashboard Data Synced.");
     }
 
@@ -125,6 +132,7 @@ public class SteamDashboardSyncService {
     public void syncScheduledMonthly() {
         LocalDate lastMonthFirstDay = LocalDate.now().minusMonths(1).withDayOfMonth(1);
         processMonthlyCollection(toEpoch(lastMonthFirstDay));
+        dashboardService.refreshCache(CurationType.MONTHLY_TOP);
         log.info("Monthly Top Apps Dashboard Data Synced.");
     }
 
@@ -137,6 +145,7 @@ public class SteamDashboardSyncService {
         // 작년 1월 1일 (API 요청 파라미터)
         LocalDate lastYearFirstDay = LocalDate.now().minusYears(1).withDayOfYear(1);
         processYearlyCollection(TimestampUtils.toEpoch(lastYearFirstDay));
+        dashboardService.refreshCache(CurationType.YEARLY_TOP);
         log.info("Yearly Top Apps Dashboard Data Synced.");
 
     }
@@ -148,6 +157,9 @@ public class SteamDashboardSyncService {
         try {
             SteamDashboardResponse concurrent = collector.collectConcurrentPlayersTopApp(props.dashboard().countryCode());
             saveDashboard(CurationType.CONCURRENT_PLAYER, concurrent);
+
+            //Redis 캐시 갱신
+            dashboardService.refreshCache(CurationType.CONCURRENT_PLAYER);
             log.info("Concurrent Players Synced.");
         } catch (RestClientException e) {
             log.warn("Concurrent Players API Failed: {}", e.getMessage());
@@ -163,6 +175,9 @@ public class SteamDashboardSyncService {
         try {
             SteamDashboardResponse mostPlayed = collector.collectMostPlayedApp(props.dashboard().countryCode());
             saveDashboard(CurationType.MOST_PLAYED, mostPlayed);
+
+            dashboardService.refreshCache(CurationType.MOST_PLAYED);
+
             log.info("Most Played Synced.");
         } catch (RestClientException e) {
             log.warn("Most Played API Failed: {}", e.getMessage());
@@ -239,6 +254,10 @@ public class SteamDashboardSyncService {
         try {
             // TransactionTemplate 안에서 원자적으로 실행
             transactionTemplate.executeWithoutResult( status -> {
+
+                // 동일 큐레이션 타입과 동일한 수집 시각을 가진 기존 데이터 삭제 후 삽입
+                dashboardRepository.deleteByCurationTypeAndReferenceAt(type, response.referenceAt());
+
                 // 1. 수집된 AppID 리스트 추출 (String 변환)
                 List<String> appIds = response.ranks().stream()
                         .map(rank -> String.valueOf(rank.appId()))
