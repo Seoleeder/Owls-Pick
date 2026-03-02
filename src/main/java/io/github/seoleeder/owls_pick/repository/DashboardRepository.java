@@ -14,4 +14,7 @@ public interface DashboardRepository extends JpaRepository<Dashboard, Long>, Das
     //같은 큐레이션 타입에 중복된 일자 데이터가 존재하는지 확인
     boolean existsByCurationTypeAndReferenceAt(CurationType curationType, LocalDateTime referenceAt);
 
+    // 특정 큐레이션 타입과 특정 수집 시각의 데이터 삭제
+    void deleteByCurationTypeAndReferenceAt(CurationType curationType, LocalDateTime referenceAt);
+
 }

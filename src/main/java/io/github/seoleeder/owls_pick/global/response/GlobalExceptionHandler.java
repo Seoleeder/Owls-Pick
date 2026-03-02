@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 
 @Slf4j
@@ -22,6 +23,14 @@ public class GlobalExceptionHandler {
     public CommonResponse<?> handleCustomException(CustomException e) {
         log.error("handleCustomException() in GlobalExceptionHandler throw CustomException : {}", e.getMessage());
         return CommonResponse.fail(e.getErrorCode());
+    }
+
+    // 파라미터 타입 미스매치 예외 (Enum 변환 실패 등)
+    @ExceptionHandler(value = {MethodArgumentTypeMismatchException.class})
+    public CommonResponse<?> handleTypeMismatchException(MethodArgumentTypeMismatchException e) {
+        log.error("handleTypeMismatchException() in GlobalExceptionHandler : {}", e.getMessage());
+        // ErrorCode에 BAD_REQUEST나 INVALID_PARAMETER 같은 400 에러 코드가 있다면 그걸 넣어주세요!
+        return CommonResponse.fail(ErrorCode.INVALID_PARAMETER);
     }
 
     // 기본 예외

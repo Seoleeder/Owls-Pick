@@ -10,7 +10,6 @@ import io.github.seoleeder.owls_pick.global.response.CustomException;
 import io.github.seoleeder.owls_pick.global.response.ErrorCode;
 import io.github.seoleeder.owls_pick.global.util.IgdbImageUrlProvider;
 import io.github.seoleeder.owls_pick.repository.DashboardRepository;
-import io.github.seoleeder.owls_pick.repository.StoreDetailRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -22,7 +21,6 @@ import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -31,8 +29,8 @@ public class DashboardService {
 
     private final RedisTemplate<String, Object> redisTemplate;
     private final DashboardRepository dashboardRepository;
-    private final StoreDetailRepository storeDetailRepository;
     private final ObjectMapper objectMapper;
+    private final GamePriceService gamePriceService;
 
     private final IgdbImageUrlProvider imageUrlProvider;
 
@@ -134,21 +132,11 @@ public class DashboardService {
         LocalDateTime prevDate = dashboardRepository.findAdjacentDate(type, targetDate, true);
         LocalDateTime nextDate = dashboardRepository.findAdjacentDate(type, targetDate, false);
 
-        // 조회된 게임들의 스팀 상점 가격 정보 매핑 (GameID 기준)
+        // 조회된 게임들의 ID 추출
         List<Long> gameIds = dashboards.stream().map(d -> d.getGame().getId()).toList();
 
-        List<StoreDetail> allStoreDetails = storeDetailRepository.findAllByGameIdIn(gameIds);
-        Map<Long, StoreDetail> lowestPriceMap = allStoreDetails.stream()
-                .collect(Collectors.toMap(
-                        detail -> detail.getGame().getId(),
-                        detail -> detail,
-                        (existing, replacement) -> {
-                            // 현재 할인가가 더 낮은 데이터를 우선 선택
-                            // 가격이 같다면 기존 값 유지
-                            return existing.getDiscountPrice() <= replacement.getDiscountPrice()
-                                    ? existing : replacement;
-                        }
-                ));
+        // 추출된 게임들의 현재 최저가 데이터 매핑
+        Map<Long, StoreDetail> lowestPriceMap = gamePriceService.getLowestPriceMap(gameIds);
 
         // 대시보드 DTO 변환 및 이미지 URL 생성
         List<DashboardResponse.DashboardGameDto> gameDtos = dashboards.stream()
@@ -161,9 +149,9 @@ public class DashboardService {
                             d.getRank(),
                             game.getTitle(),
                             imageUrlProvider.generateImageUrl(game.getCoverId()),
-                            price != null ? price.getOriginalPrice() : 0,
-                            price != null ? price.getDiscountPrice() : 0,
-                            price != null ? price.getDiscountRate() : 0
+                            (price != null && price.getOriginalPrice() != null) ? price.getOriginalPrice() : 0,
+                            (price != null && price.getDiscountPrice() != null) ? price.getDiscountPrice() : 0,
+                            (price != null && price.getDiscountRate() != null) ? price.getDiscountRate() : 0
                     );
                     return dashboardGameDto;
                 })

@@ -23,12 +23,24 @@ public class DevAuthController {
             summary = "개발용 백도어 로그인",
             description = "소셜 인증 과정을 생략하고, 원하는 이메일로 즉시 로그인(가입)하여 JWT 토큰 발급"
     )
-    @PostMapping("/bypass")
+    @PostMapping("/bypass/login")
     public CommonResponse<LoginResponse> bypassLogin(
             // 이메일을 안 보내면 기본값으로 test@kakao.com 삽입
             @RequestParam(defaultValue = "test@kakao.com") String email) {
 
         LoginResponse response = authService.bypassLogin(email);
         return CommonResponse.ok(response);
+    }
+
+    @Operation(
+            summary = "개발용 백도어 로그아웃",
+            description = "백도어로 로그인한 이메일로 로그아웃 진행"
+    )
+    @PostMapping("/bypass/logout")
+    public CommonResponse<LoginResponse> bypassLogout(
+            @RequestParam String email) {
+
+        authService.bypassLogout(email);
+        return CommonResponse.ok(null);
     }
 }

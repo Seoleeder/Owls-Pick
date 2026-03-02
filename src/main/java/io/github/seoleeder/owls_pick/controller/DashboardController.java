@@ -17,9 +17,9 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDateTime;
 
 @RestController
-@RequestMapping("/api/dashboards")
+@RequestMapping("/api/dashboard")
 @RequiredArgsConstructor
-@Tag(name = "Dashboard", description = "메인 대시보드 및 각종 차트 데이터 조회 API")
+@Tag(name = "대시보드 API", description = "메인 대시보드 및 각종 차트 데이터 조회 API")
 class DashboardController {
 
     private final DashboardService dashboardService;
