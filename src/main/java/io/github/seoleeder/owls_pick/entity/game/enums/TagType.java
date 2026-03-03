@@ -4,4 +4,8 @@ public interface TagType {
     String name();
     String getKorName();
     String getEngName();
+
+    default boolean isAdult() {
+        return false;
+    }
 }

@@ -59,6 +59,10 @@ public class Game {
     @Column(length = 30)
     private String ratingEsrb;
 
+    @Column (nullable = false)
+    @Builder.Default
+    private Boolean isAdult = false;
+
     @JdbcTypeCode(SqlTypes.ARRAY)
     @Builder.Default
     @Column(columnDefinition = "text[]")
@@ -155,5 +159,23 @@ public class Game {
         this.perspective = perspective;
     }
 
+    /**
+     *  심의 등급(국내 및 북미)과 태그 정보를 바탕으로 성인 콘텐츠 여부 판단 및 상태 갱신
+     */
+    public void evaluateAdultStatus(Tag tag) {
+        // 1. 한국 심의(GRAC) 검사: 문자열에 "18" 또는 "19"가 포함되어 있는지 확인
+        boolean isKrAdult = this.ratingKr != null &&
+                (this.ratingKr.contains("18") || this.ratingKr.contains("19"));
 
+        // 2. 북미 심의(ESRB) 검사: 대소문자 무시하고 "M" 또는 "AO" 인지 확인
+        boolean isEsrbAdult = this.ratingEsrb != null &&
+                (this.ratingEsrb.equalsIgnoreCase("M") || this.ratingEsrb.equalsIgnoreCase("AO"));
+
+        boolean isAdultRating = isKrAdult || isEsrbAdult;
+        // 2. 넘겨받은 태그가 19금인지 판단
+        boolean hasAdultTag = (tag != null && tag.isAdult());
+
+        // 3. 둘 중 하나라도 해당하면 내 상태를 true로 변경
+        this.isAdult = isAdultRating || hasAdultTag;
+    }
 }

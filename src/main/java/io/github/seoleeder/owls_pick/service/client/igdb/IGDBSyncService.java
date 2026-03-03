@@ -326,13 +326,17 @@ public class IGDBSyncService {
             Game gameProxy = gameRepository.getReferenceById(game.getId());
 
             // Tags (1:1)
-            // 장르, 테마, 키워드 이름 정보만 추출해서 저장
-            tags.add(Tag.builder()
+            // 장르, 테마, 키워드 데이터 추출 후 저장
+            Tag tag = Tag.builder()
                     .game(gameProxy)
                     .genres(extractValues(dto.genres(), IGDBGameDetailResponse.Genre::name))
                     .themes(extractValues(dto.themes(), IGDBGameDetailResponse.Theme::name))
                     .keywords(extractValues(dto.keywords(), IGDBGameDetailResponse.Keyword::name))
-                    .build());
+                    .build();
+            tags.add(tag);
+
+            // 수집된 각 게임들에 대해 태그로 성인 게임 여부 판단
+            game.evaluateAdultStatus(tag);
 
             // Screenshot (1:N)
             if (dto.screenshots() != null) {
@@ -358,7 +362,7 @@ public class IGDBSyncService {
                     langMap.computeIfAbsent(langName, k -> new HashSet<>()).add(supportType);
                 }
 
-                // (2) 모아진 데이터를 엔티티로 변환 (언어당 1개의 Row 생성)
+                // 모아진 데이터를 엔티티로 변환 (언어당 1개의 Row 생성)
                 for (Map.Entry<String, Set<String>> entry : langMap.entrySet()) {
                     String langName = entry.getKey();
                     Set<String> types = entry.getValue();
@@ -423,6 +427,9 @@ public class IGDBSyncService {
         screenshotRepository.saveAll(screenshots);
         languageSupportRepository.saveAll(languages);
         gameCompanyRepository.saveAll(gameCompanies);
+
+        //성인 게임 여부가 업데이트된 게임 데이터 저장
+        gameRepository.saveAll(games);
 
     }
 
