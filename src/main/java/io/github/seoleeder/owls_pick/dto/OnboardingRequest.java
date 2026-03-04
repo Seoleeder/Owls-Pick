@@ -1,0 +1,24 @@
+package io.github.seoleeder.owls_pick.dto;
+
+import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.NotNull;
+
+import java.time.LocalDate;
+import java.util.List;
+
+/**
+ * 최초 로그인 시 온보딩 데이터 수집을 위한 DTO
+ */
+@Schema(description = "사용자 온보딩 정보 등록 요청 DTO")
+public record OnboardingRequest(
+        @Schema(description = "생년월일", example = "1994-10-31")
+        @NotNull(message = "Birth date is required.")
+        LocalDate birthDate,
+
+        @Schema(description = "선호 게임 태그 목록", example = "[\"Indie\", \"Action\", \"RPG\"]")
+        List<String> preferredTags,
+
+        @Schema(description = "선호 게임 스토어 목록", example = "[\"Steam\", \"Epic Games Store\"]")
+        List<String> preferredStores
+) {
+}

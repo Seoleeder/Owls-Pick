@@ -2,6 +2,7 @@ package io.github.seoleeder.owls_pick.global.security.jwt;
 
 import io.github.seoleeder.owls_pick.global.response.CustomException;
 import io.github.seoleeder.owls_pick.global.response.ErrorCode;
+import io.github.seoleeder.owls_pick.global.security.CustomUserDetails;
 import io.jsonwebtoken.*;
 
 import io.jsonwebtoken.security.SecurityException;
@@ -98,8 +99,12 @@ public class JwtTokenProvider {
                         .map(SimpleGrantedAuthority::new)
                         .collect(Collectors.toList());
 
-        // UserDetails 객체를 만들어서 Authentication 반환
-        UserDetails principal = new User(claims.getSubject(), "", authorities);
+        // CustomUserDetails 객체를 생성하여 Authentication 반환
+        CustomUserDetails principal = new CustomUserDetails(
+                Long.valueOf(claims.getSubject()),
+                "", // 필요시 Claim에서 이메일 등을 추출하여 추가 가능
+                authorities
+        );
         return new UsernamePasswordAuthenticationToken(principal, "", authorities);
     }
 
