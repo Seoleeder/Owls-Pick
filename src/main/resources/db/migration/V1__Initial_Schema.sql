@@ -176,8 +176,10 @@ create table public.users
     updated_at         timestamp(6),
     name               varchar(30)  not null,
     email              varchar(255) not null,
-    preferred_platform text[],
-    preferred_tag      text[]
+    birth_date DATE,
+    is_onboarded BOOLEAN DEFAULT FALSE NOT NULL,
+    preferred_stores text[],
+    preferred_tags      text[]
 );
 
 create table public.chat_session
