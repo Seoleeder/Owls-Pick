@@ -120,7 +120,8 @@ create table public.review_stat
         constraint fk_review_stat_game_id
             references public.game,
     updated_at        timestamp(6),
-    review_score_desc varchar(30)
+    review_score_desc varchar(30),
+    weekly_review integer not null default 0
 );
 
 create table public.screenshot

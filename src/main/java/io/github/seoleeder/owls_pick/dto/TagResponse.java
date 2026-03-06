@@ -6,7 +6,7 @@ import lombok.Builder;
 
 @Builder
 @Schema(description = "태그(장르/테마) 응답 DTO")
-public record TagDto(
+public record TagResponse(
         @Schema(description = "태그 식별 코드 (Enum name)", example = "RPG")
         String code,
 
@@ -17,8 +17,8 @@ public record TagDto(
         String engName
 ) {
         // Tag enum을 DTO로 변환
-        public static TagDto from(TagType tagType) {
-                return TagDto.builder()
+        public static TagResponse from(TagType tagType) {
+                return TagResponse.builder()
                         .code(tagType.name())
                         .korName(tagType.getKorName())
                         .engName(tagType.getEngName())

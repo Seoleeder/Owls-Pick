@@ -1,12 +1,12 @@
 package io.github.seoleeder.owls_pick.controller;
 
-import io.github.seoleeder.owls_pick.dto.TagDto;
+import io.github.seoleeder.owls_pick.dto.TagResponse;
 import io.github.seoleeder.owls_pick.dto.GameResponseDto;
 import io.github.seoleeder.owls_pick.entity.game.enums.GameSortType;
 import io.github.seoleeder.owls_pick.entity.game.enums.GenreType;
 import io.github.seoleeder.owls_pick.entity.game.enums.ThemeType;
 import io.github.seoleeder.owls_pick.global.response.CommonResponse;
-import io.github.seoleeder.owls_pick.service.ExploreService;
+import io.github.seoleeder.owls_pick.service.ExploreTagService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -25,9 +25,9 @@ import java.util.List;
 @RequestMapping("/api/explore")
 @RequiredArgsConstructor
 @Tag(name = "태그 탐색 API", description = "장르 및 테마 기반 게임 큐레이션 탐색 API")
-public class ExploreController {
+public class ExploreTagController {
 
-    private final ExploreService exploreService;
+    private final ExploreTagService exploreService;
 
     // 태그 (장르/테마) 목록 API
     @Operation(summary = "인기 장르 태그 조회 (top 5)", description = "메인 화면 노출용 상위 인기 장르 태그 목록 반환")
@@ -76,7 +76,7 @@ public class ExploreController {
             )
     })
     @GetMapping("/genres/popular")
-    public CommonResponse<List<TagDto>> getPopularGenres() {
+    public CommonResponse<List<TagResponse>> getPopularGenres() {
         return CommonResponse.ok(exploreService.getPopularGenres());
     }
 
@@ -104,7 +104,7 @@ public class ExploreController {
             )
     })
     @GetMapping("/genres")
-    public CommonResponse<List<TagDto>> getAllGenres() {
+    public CommonResponse<List<TagResponse>> getAllGenres() {
         return CommonResponse.ok(exploreService.getAllGenres());
     }
 
@@ -132,7 +132,7 @@ public class ExploreController {
             )
     })
     @GetMapping("/themes/popular")
-    public CommonResponse<List<TagDto>> getPopularThemes() {
+    public CommonResponse<List<TagResponse>> getPopularThemes() {
         return CommonResponse.ok(exploreService.getPopularThemes());
     }
 
@@ -161,7 +161,7 @@ public class ExploreController {
             )
     })
     @GetMapping("/themes")
-    public CommonResponse<List<TagDto>> getAllThemes() {
+    public CommonResponse<List<TagResponse>> getAllThemes() {
         return CommonResponse.ok(exploreService.getAllThemes());
     }
 
@@ -175,7 +175,7 @@ public class ExploreController {
                     responseCode = "200",
                     description = "조회 성공",
                     content = @Content(mediaType = "application/json",
-                            examples = @ExampleObject(name = "성공 예시", value = """
+                            examples = @ExampleObject(value = """
                     {
                       "success": true,
                       "data": {
@@ -205,7 +205,7 @@ public class ExploreController {
                     responseCode = "400",
                     description = "잘못된 파라미터 요청",
                     content = @Content(mediaType = "application/json",
-                            examples = @ExampleObject(name = "400 에러 예시", value = """
+                            examples = @ExampleObject(value = """
                     {
                       "success": false,
                       "data": null,
@@ -220,7 +220,7 @@ public class ExploreController {
                     responseCode = "500",
                     description = "서버 내부 오류",
                     content = @Content(mediaType = "application/json",
-                            examples = @ExampleObject(name = "500 에러 예시", value = """
+                            examples = @ExampleObject(value = """
                     {
                       "success": false,
                       "data": null,
@@ -254,7 +254,7 @@ public class ExploreController {
                     description = "조회 성공",
                     content = @Content(
                             mediaType = "application/json",
-                            examples = @ExampleObject(name = "성공 예시", value = """
+                            examples = @ExampleObject(value = """
                                     {
                                       "success": true,
                                       "data": {
@@ -286,7 +286,7 @@ public class ExploreController {
                     description = "잘못된 파라미터 요청",
                     content = @Content(
                             mediaType = "application/json",
-                            examples = @ExampleObject(name = "400 에러 예시", value = """
+                            examples = @ExampleObject(value = """
                                     {
                                       "success": false,
                                       "data": null,
@@ -303,7 +303,7 @@ public class ExploreController {
                     description = "서버 내부 오류",
                     content = @Content(
                             mediaType = "application/json",
-                            examples = @ExampleObject(name = "500 에러 예시", value = """
+                            examples = @ExampleObject(value = """
                                     {
                                       "success": false,
                                       "data": null,

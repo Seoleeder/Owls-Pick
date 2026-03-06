@@ -4,6 +4,7 @@ import io.github.seoleeder.owls_pick.client.steam.SteamDataCollector;
 import io.github.seoleeder.owls_pick.client.steam.dto.Review.SteamReviewDetailResponse.SteamReviewDetail;
 import io.github.seoleeder.owls_pick.client.steam.dto.Review.SteamReviewResponse;
 import io.github.seoleeder.owls_pick.client.steam.dto.Review.SteamReviewStatsResponse.SteamReviewStats;
+import io.github.seoleeder.owls_pick.global.config.properties.CurationProperties;
 import io.github.seoleeder.owls_pick.global.config.properties.SteamProperties;
 import io.github.seoleeder.owls_pick.global.util.TimestampUtils;
 import io.github.seoleeder.owls_pick.entity.game.Game;
@@ -20,6 +21,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.client.RestClientException;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -37,7 +39,8 @@ public class SteamReviewSyncService {
     private final ExecutorService executorService; // 병렬 처리용 스레드 풀
     private final TransactionTemplate transactionTemplate; // 트랜잭션 수동 제어용
 
-    private final SteamProperties props;
+    private final SteamProperties steamProps;
+    private final CurationProperties curationProps;
 
     public SteamReviewSyncService(
             SteamDataCollector collector,
@@ -45,16 +48,18 @@ public class SteamReviewSyncService {
             ReviewStatRepository reviewStatRepository,
             ReviewRepository reviewRepository,
             TransactionTemplate transactionTemplate,
-            SteamProperties props)
+            SteamProperties steamProps,
+            CurationProperties curationProps)
     {
         this.collector = collector;
         this.storeDetailRepository = storeDetailRepository;
         this.reviewStatRepository = reviewStatRepository;
         this.reviewRepository = reviewRepository;
         this.transactionTemplate = transactionTemplate;
-        this.props = props;
+        this.steamProps = steamProps;
+        this.curationProps = curationProps;
 
-        this.executorService = Executors.newFixedThreadPool(props.sync().threadPoolSize());
+        this.executorService = Executors.newFixedThreadPool(steamProps.sync().threadPoolSize());
     }
 
     /**
@@ -64,7 +69,7 @@ public class SteamReviewSyncService {
     public void syncReviews(){
 
         //리뷰 갱신이 필요한 스팀 게임 ID 조회
-        List<StoreDetail> targetGames = storeDetailRepository.findGamesNeedingReviewUpdate(StoreDetail.StoreName.STEAM, props.review().maintenanceBatchSize());
+        List<StoreDetail> targetGames = storeDetailRepository.findGamesNeedingReviewUpdate(StoreDetail.StoreName.STEAM, steamProps.review().maintenanceBatchSize());
 
         if (targetGames.isEmpty()) {
             log.info("All games are up to date.");
@@ -93,7 +98,7 @@ public class SteamReviewSyncService {
             // ReviewStat이 존재하지 않는 스팀 게임 ID 조회
             List<StoreDetail> targetGames = storeDetailRepository.findGamesWithNoReviews(
                     StoreDetail.StoreName.STEAM,
-                    props.review().initBatchSize()
+                    steamProps.review().initBatchSize()
             );
 
             if (targetGames.isEmpty()) {
@@ -122,7 +127,7 @@ public class SteamReviewSyncService {
             Long appId = Long.parseLong(appIdStr);
 
             // 게임의 리뷰 통계와 최소 유용함 수가 일정 수치 이상인 리뷰들 수집
-            SteamReviewResponse response = collector.collectRefinedReviews(appId, props.review().minVotesUp());
+            SteamReviewResponse response = collector.collectRefinedReviews(appId, steamProps.review().minVotesUp());
 
             if (response == null) return;
 
@@ -158,6 +163,13 @@ public class SteamReviewSyncService {
         if (!response.reviews().isEmpty()) {
             saveReviews(game, response.reviews());
         }
+
+        // 현재 시각 기준으로 일주일 전 시각 계산
+        int daysRange = curationProps.trending().daysRange();
+        LocalDateTime startTime = LocalDateTime.now().minusDays(daysRange);
+
+        // 주간 리뷰 수 갱신
+        reviewStatRepository.updateWeeklyReviewCount(game.getId(), startTime);
     }
 
     /** 스팀 리뷰 통계 데이터 저장 메서드

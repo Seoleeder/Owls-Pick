@@ -36,6 +36,10 @@ public class ReviewStat {
     @Column(name = "total_negative")
     private int totalNegative;
 
+    @Column(nullable = false)
+    @Builder.Default
+    private int weeklyReview = 0;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 

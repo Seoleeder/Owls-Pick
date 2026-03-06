@@ -2,6 +2,7 @@ package io.github.seoleeder.owls_pick.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -16,9 +17,12 @@ public record OnboardingRequest(
         LocalDate birthDate,
 
         @Schema(description = "선호 게임 태그 목록", example = "[\"Indie\", \"Action\", \"RPG\"]")
+        @NotNull(message = "Preferred tags are required.")
+        @Size(min = 3, message = "Please select at least 3 tags for personalized recommendations.")
         List<String> preferredTags,
 
         @Schema(description = "선호 게임 스토어 목록", example = "[\"Steam\", \"Epic Games Store\"]")
+        @NotNull(message = "Preferred stores are required.")
         List<String> preferredStores
 ) {
 }
