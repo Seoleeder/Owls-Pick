@@ -16,6 +16,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.client.RestClientException;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 
@@ -62,14 +63,42 @@ public class SteamAppSyncService {
                     List<App> newApps = apps.stream()
                             .filter(app -> !existingSteamIds.contains(String.valueOf(app.appId())))
                             .filter(app -> app.name() != null && !app.name().isBlank())
+                            .filter(app -> app.name().length() <= 255)
                             .toList();
 
-                    // 새로운 게임이 있으면 저장 (저장 메서드 내부 트랜잭션 적용)
+                    // 새로운 게임이 있으면 저장 (Chunk 단위로 쪼개고, 저장 실패 시 문제되는 데이터 제외하고 개별 저장)
                     if (!newApps.isEmpty()) {
-                        transactionTemplate.executeWithoutResult(status -> {
-                            saveNewApps(newApps);
-                        });
-                        totalNewGames += newApps.size();
+                        int chunkSize = 1000;
+                        for (int i = 0; i < newApps.size(); i += chunkSize) {
+                            List<App> chunk = newApps.subList(i, Math.min(newApps.size(), i + chunkSize));
+                            try{
+                                //저장 메서드 내부 트랜잭션 적용
+                                transactionTemplate.executeWithoutResult(status -> {
+                                    saveNewApps(chunk);
+                                });
+                                totalNewGames += chunk.size();
+
+                            } catch (DataAccessException e) {
+                                log.warn("Chunk save failed! Attempting individual saves to isolate bad data. (Chunk size: {})", chunk.size());
+
+                                // 청크 내에서 개별로 저장된 게임 수
+                                int recoveredCount = 0;
+                                for (App singleApp : chunk) {
+                                    try {
+                                        // 단건을 새로운 트랜잭션으로 묶어서 저장
+                                        transactionTemplate.executeWithoutResult(status -> {
+                                            saveNewApps(Collections.singletonList(singleApp));
+                                        });
+                                        recoveredCount++;
+                                    } catch (DataAccessException ex) {
+                                        // DB 제약조건을 위반하는 데이터 감지 및 폐기
+                                        log.error("Bad data detected and discarded - AppID: {}, Name: {}", singleApp.appId(), singleApp.name());
+                                    }
+                                }
+                                totalNewGames += recoveredCount;
+                                log.info("Chunk recovery complete: {}/{} games successfully rescued!", recoveredCount, chunk.size());
+                            }
+                        }
                     }
                 }
 

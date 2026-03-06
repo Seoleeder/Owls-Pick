@@ -4,6 +4,7 @@ import io.github.seoleeder.owls_pick.client.steam.SteamDataCollector;
 import io.github.seoleeder.owls_pick.client.steam.dto.Review.SteamReviewDetailResponse.SteamReviewDetail;
 import io.github.seoleeder.owls_pick.client.steam.dto.Review.SteamReviewResponse;
 import io.github.seoleeder.owls_pick.client.steam.dto.Review.SteamReviewStatsResponse.SteamReviewStats;
+import io.github.seoleeder.owls_pick.global.config.properties.CurationProperties;
 import io.github.seoleeder.owls_pick.global.config.properties.SteamProperties;
 import io.github.seoleeder.owls_pick.entity.game.Game;
 import io.github.seoleeder.owls_pick.entity.game.ReviewStat;
@@ -59,13 +60,21 @@ class SteamReviewSyncServiceTest {
                 null
         );
 
+        CurationProperties curationProps = new CurationProperties(
+                new CurationProperties.Intersection(10),
+                new CurationProperties.HiddenMasterpiece(50, 3000, 8),
+                new CurationProperties.Trending(7, 8),
+                new CurationProperties.ShortPlaytime(600, 8)
+        );
+
         steamReviewSyncService = new SteamReviewSyncService(
                 collector,
                 storeDetailRepository,
                 reviewStatRepository,
                 reviewRepository,
                 transactionTemplate,
-                props
+                props,
+                curationProps
         );
 
         // 트랜잭션 템플릿 내부 로직 실행 보장 (lenient: 미호출 시 Stubbing 에러 방지)
@@ -109,6 +118,9 @@ class SteamReviewSyncServiceTest {
 
         // 2. 리뷰 상세(Review) 저장 호출 검증
         verify(reviewRepository, times(1)).saveAll(anyList());
+
+        // 3. 주간 리뷰 수 갱신 호출 검증
+        verify(reviewStatRepository, times(1)).updateWeeklyReviewCount(eq(1L), any());
     }
 
     @Test
@@ -147,6 +159,9 @@ class SteamReviewSyncServiceTest {
 
         // 2. 중복이 아닌 리뷰("B")만 담아서 saveAll이 호출되었는지 확인
         verify(reviewRepository).saveAll(argThat(list -> ((Collection<?>) list).size() == 1));
+
+        // 3. 주간 리뷰 수 갱신 호출 검증
+        verify(reviewStatRepository, times(1)).updateWeeklyReviewCount(eq(1L), any());
     }
 
     @Test
@@ -206,5 +221,8 @@ class SteamReviewSyncServiceTest {
             List<?> reviews = (List<?>) list;
             return reviews.size() == 1;
         }));
+
+        // 주간 리뷰 수 갱신이 트랜잭션 내부에서 잘 일어났는지 검증
+        verify(reviewStatRepository, times(1)).updateWeeklyReviewCount(eq(gameId), any());
     }
 }
