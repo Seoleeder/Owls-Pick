@@ -1,10 +1,7 @@
 package io.github.seoleeder.owls_pick.service;
 
+import io.github.seoleeder.owls_pick.dto.GameResponse;
 import io.github.seoleeder.owls_pick.dto.TagResponse;
-import io.github.seoleeder.owls_pick.dto.GameResponseDto;
-import io.github.seoleeder.owls_pick.entity.game.Game;
-import io.github.seoleeder.owls_pick.entity.game.ReviewStat;
-import io.github.seoleeder.owls_pick.entity.game.StoreDetail;
 import io.github.seoleeder.owls_pick.entity.game.enums.GameSortType;
 import io.github.seoleeder.owls_pick.entity.game.enums.GenreType;
 import io.github.seoleeder.owls_pick.entity.game.enums.ThemeType;
@@ -21,7 +18,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 
 @Slf4j
 @Service
@@ -78,7 +74,7 @@ public class ExploreTagService {
     /**
      * 특정 장르의 게임 조회 (Pagination, 정렬 조건 적용) -> 게임 응답 DTO 변환
      * */
-    public Page<GameResponseDto> getGamesByGenre(GenreType genre, GameSortType sort, Pageable pageable) {
+    public Page<GameResponse> getGamesByGenre(GenreType genre, GameSortType sort, Pageable pageable) {
         Page<GameWithReviewStatDto> genrePage = gameRepository.findGamesByGenre(genre, sort, pageable);
         return responseConverter.convertPage(genrePage);
     }
@@ -86,7 +82,7 @@ public class ExploreTagService {
     /**
      * 특정 장르의 게임 조회 (Pagination, 정렬 조건 적용) -> 게임 응답 DTO 변환
      * */
-    public Page<GameResponseDto> getGamesByTheme(ThemeType theme, GameSortType sort, Pageable pageable) {
+    public Page<GameResponse> getGamesByTheme(ThemeType theme, GameSortType sort, Pageable pageable) {
         Page<GameWithReviewStatDto> themePage = gameRepository.findGamesByTheme(theme, sort, pageable);
         return responseConverter.convertPage(themePage);
     }

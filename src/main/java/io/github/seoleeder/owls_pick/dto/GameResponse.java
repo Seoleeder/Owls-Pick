@@ -7,7 +7,7 @@ import java.time.LocalDate;
 
 @Builder
 @Schema(description = "게임 상세 정보 응답 DTO")
-public record GameResponseDto(
+public record GameResponse(
         @Schema(description = "게임 ID", example = "1")
         Long gameId,
 

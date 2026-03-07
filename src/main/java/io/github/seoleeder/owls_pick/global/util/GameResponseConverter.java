@@ -1,6 +1,7 @@
 package io.github.seoleeder.owls_pick.global.util; // 혹은 component, mapper 등 적절한 패키지
 
-import io.github.seoleeder.owls_pick.dto.GameResponseDto;
+import io.github.seoleeder.owls_pick.dto.GameResponse;
+import io.github.seoleeder.owls_pick.dto.UpcomingGameResponse;
 import io.github.seoleeder.owls_pick.entity.game.Game;
 import io.github.seoleeder.owls_pick.entity.game.ReviewStat;
 import io.github.seoleeder.owls_pick.entity.game.StoreDetail;
@@ -10,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Component;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -21,9 +23,9 @@ public class GameResponseConverter {
     private final IgdbImageUrlProvider imageUrlProvider;
 
     /**
-     * Page<GameWithReviewStatDto> 를 Page<GameResponseDto> 로 일괄 변환 (최저가 조인 포함)
+     * Page<GameWithReviewStatDto> 를 Page<GameResponse> 로 일괄 변환 (최저가 조인 포함)
      */
-    public Page<GameResponseDto> convertPage(Page<GameWithReviewStatDto> rawPage) {
+    public Page<GameResponse> convertPage(Page<GameWithReviewStatDto> rawPage) {
         if (rawPage.isEmpty()) {
             return rawPage.map(result -> convertToDto(result, null));
         }
@@ -41,13 +43,13 @@ public class GameResponseConverter {
     }
 
     /**
-     * GameWithReviewStatDto + 스토어 현재 최저가 데이터 -> GameResponseDto
+     * GameWithReviewStatDto + 스토어 현재 최저가 데이터 -> GameResponse
      */
-    public GameResponseDto convertToDto(GameWithReviewStatDto result, StoreDetail bestPrice) {
+    public GameResponse convertToDto(GameWithReviewStatDto result, StoreDetail bestPrice) {
         Game game = result.game();
         ReviewStat reviewStat = result.reviewStat();
 
-        return GameResponseDto.builder()
+        return GameResponse.builder()
                 .gameId(game.getId())
                 .title(game.getTitle())
                 .coverUrl(imageUrlProvider.generateImageUrl(game.getCoverId()))
@@ -59,6 +61,20 @@ public class GameResponseConverter {
                 .originalPrice((bestPrice != null && bestPrice.getOriginalPrice() != null) ? bestPrice.getOriginalPrice() : 0)
                 .discountPrice((bestPrice != null && bestPrice.getDiscountPrice() != null) ? bestPrice.getDiscountPrice() : 0)
                 .discountRate((bestPrice != null && bestPrice.getDiscountRate() != null) ? bestPrice.getDiscountRate() : 0)
+                .build();
+    }
+
+    /**
+     * Entity(Game) -> UpcomingGameResponseDto (출시 예정작 전용 Dto)
+     */
+    public UpcomingGameResponse convertToUpcomingDto(Game game) {
+        return UpcomingGameResponse.builder()
+                .gameId(game.getId())
+                .title(game.getTitle())
+                .coverUrl(imageUrlProvider.generateImageUrl(game.getCoverId()))
+                .firstRelease(game.getFirstRelease())
+                .hypes(game.getHypes())
+                .platforms(game.getPlatform() != null ? game.getPlatform() : Collections.emptyList())
                 .build();
     }
 }

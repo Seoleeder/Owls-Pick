@@ -6,6 +6,9 @@ import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.core.types.dsl.Expressions;
 import com.querydsl.jpa.impl.JPAQuery;
 import com.querydsl.jpa.impl.JPAQueryFactory;
+import io.github.seoleeder.owls_pick.dto.UpcomingGameResponse;
+import io.github.seoleeder.owls_pick.dto.section.UpcomingSectionResponse;
+import io.github.seoleeder.owls_pick.entity.game.Game;
 import io.github.seoleeder.owls_pick.repository.dto.GameWithReviewStatDto;
 import io.github.seoleeder.owls_pick.entity.game.enums.GameSortType;
 import io.github.seoleeder.owls_pick.entity.game.enums.GenreType;
@@ -117,6 +120,40 @@ public class GameRepositoryImpl implements GameRepositoryCustom {
         // PageableExecutionUtils를 사용하여 Page 객체 생성
         return PageableExecutionUtils.getPage(content, pageable, countQuery::fetchOne);
     }
+
+    /**
+     * 출시 예정인 게임 중, Hype이 일정 수치 이상인 게임 조회
+     * */
+    public Page<Game> findUpcomingGames(LocalDate today, LocalDate maxDate, int minHypes, Pageable pageable) {
+
+        List<Game> content = queryFactory
+                .selectFrom(game)
+                .where(
+                        game.firstRelease.between(today, maxDate),  // 오늘부터 N개월 이내 출시!
+                        game.coverId.isNotNull(),                   // 게임 커버 이미지 존재
+                        game.hypes.goe(minHypes)                    // 최소 M명 이상 기대하는 대작만 필터링
+                )
+                .orderBy(
+                        game.hypes.desc(),              // 1. 기대도 높은 순
+                        game.firstRelease.asc()         // 2. 출시 예정일 가까운 순
+                )
+                .offset(pageable.getOffset())
+                .limit(pageable.getPageSize())
+                .fetch();
+
+        JPAQuery<Long> countQuery = queryFactory
+                .select(game.count())
+                .from(game)
+                .where(
+                        game.firstRelease.between(today, maxDate),
+                        game.coverId.isNotNull(),
+                        game.hypes.goe(minHypes)
+                );
+
+        return PageableExecutionUtils.getPage(content, pageable, countQuery::fetchOne);
+    }
+
+    /* 개인화 맞춤형 게임 추천 섹션 쿼리 */
 
     /**
      * 사용자의 선호 태그 정보를 반영한 맞춤형 최적 게임 리스트 조회

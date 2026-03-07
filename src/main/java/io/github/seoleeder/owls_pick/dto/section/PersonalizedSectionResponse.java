@@ -1,6 +1,6 @@
-package io.github.seoleeder.owls_pick.dto;
+package io.github.seoleeder.owls_pick.dto.section;
 
-import io.github.seoleeder.owls_pick.repository.dto.GameWithReviewStatDto;
+import io.github.seoleeder.owls_pick.dto.GameResponse;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -18,6 +18,6 @@ public class PersonalizedSectionResponse {
     private String titleKeyword;
 
     @Schema(description = "해당 태그로 조회 및 필터링된 게임들의 페이징 결과 목록")
-    private Page<GameResponseDto> games;
+    private Page<GameResponse> games;
 
 }
