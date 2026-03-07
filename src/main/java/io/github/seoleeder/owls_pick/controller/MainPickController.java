@@ -1,10 +1,10 @@
 package io.github.seoleeder.owls_pick.controller;
 
-import io.github.seoleeder.owls_pick.dto.PersonalizedSectionResponse;
+import io.github.seoleeder.owls_pick.dto.section.PersonalizedSectionResponse;
+import io.github.seoleeder.owls_pick.dto.section.UpcomingSectionResponse;
 import io.github.seoleeder.owls_pick.global.response.CommonResponse;
-import io.github.seoleeder.owls_pick.repository.dto.GameWithReviewStatDto;
 import io.github.seoleeder.owls_pick.global.security.CustomUserDetails;
-import io.github.seoleeder.owls_pick.service.PersonalizedPickService;
+import io.github.seoleeder.owls_pick.service.MainPickService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -24,11 +24,70 @@ import org.springframework.web.bind.annotation.RestController;
 @Slf4j
 @Tag(name = "사용자 맞춤형 섹션 API", description = "메인 페이지에 쓰일 사용자 맞춤형 게임 추천 섹션 API")
 @RestController
-@RequestMapping("/api/personalized-picks")
+@RequestMapping("/api/main-picks")
 @RequiredArgsConstructor
-public class PersonalizedPickController {
+public class MainPickController {
 
-    private final PersonalizedPickService personalizedPickService;
+    private final MainPickService mainPickService;
+
+    @Operation(summary = "출시 예정 기대작", description = "몇 개월 내 출시 예정이며, Hypes(글로벌 유저 기대도를 나타내는)가 높은 기대작 게임 리스트 반환 ")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "성공",
+                    content = @Content(mediaType = "application/json", examples = @ExampleObject(value = """
+                    {
+                      "success": true,
+                      "data": {
+                        "titleKeyword": "출시 예정 기대작",
+                        "games": {
+                          "content": [
+                            {
+                              "gameId": 274687,
+                              "title": "Crimson Desert",
+                              "coverUrl": "https://images.igdb.com/igdb/image/upload/t_cover_big/co4321.jpg",
+                              "firstRelease": "2025-03-19",
+                              "hypes": 244,
+                              "platforms": [Xbox Series X|S,PC (Microsoft Windows),PlayStation 5,Mac]
+                            },
+                            {
+                              "gameId": 242639,
+                              "title": "Forza Horizon 6",
+                              "coverUrl": "https://images.igdb.com/igdb/image/upload/t_cover_big/co8765.jpg",
+                              "firstRelease": "2026-05-19",
+                              "hypes": 62,
+                              "platforms": [Xbox Series X|S,PC (Microsoft Windows),PlayStation 5]
+                            }
+                          ],
+                          "totalElements": 250,
+                          "totalPages": 13,
+                          "size": 20,
+                          "number": 0
+                        }
+                      },
+                      "error": null
+                    }
+                    """))),
+            @ApiResponse(
+                    responseCode = "500", description = "서버 내부 오류",
+                    content = @Content(mediaType = "application/json", examples = @ExampleObject(value = """
+                    {
+                      "success": false,
+                      "data": null,
+                      "error": {
+                        "code": 50000,
+                        "message": "서버 내부 오류입니다."
+                      }
+                    }
+                """)))
+    })
+    @GetMapping("/upcoming")
+    public CommonResponse<UpcomingSectionResponse> getUpcomingGames(
+            @Parameter(description = "페이지 번호 (0부터 시작)", example = "0") @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "한 페이지 크기", example = "20") @RequestParam(defaultValue = "20") int size) {
+
+        PageRequest pageable = PageRequest.of(page, size);
+        UpcomingSectionResponse result = mainPickService.getUpcomingGames(pageable);
+        return CommonResponse.ok(result);
+    }
 
     @Operation(summary = "[Section 1] 선호 태그 기반 맞춤 추천", description = "유저의 선호 태그를 가장 많이 포함하는 맞춤형 게임 리스트 반환")
     @ApiResponses({
@@ -96,7 +155,7 @@ public class PersonalizedPickController {
 
         PageRequest pageable = PageRequest.of(page, size);
 
-        PersonalizedSectionResponse result = personalizedPickService.getMostPersonalizedPicks(userId, pageable);
+        PersonalizedSectionResponse result = mainPickService.getMostPersonalizedPicks(userId, pageable);
         return CommonResponse.ok(result);
     }
 
@@ -152,7 +211,7 @@ public class PersonalizedPickController {
 
         PageRequest pageable = PageRequest.of(page, size);
 
-        PersonalizedSectionResponse result = personalizedPickService.getRandomGenrePicks(pageable);
+        PersonalizedSectionResponse result = mainPickService.getRandomGenrePicks(pageable);
         return CommonResponse.ok(result);
     }
 
@@ -223,7 +282,7 @@ public class PersonalizedPickController {
 
         PageRequest pageable = PageRequest.of(page, size);
 
-        PersonalizedSectionResponse result = personalizedPickService.getRandomThemePicks(userId, pageable);
+        PersonalizedSectionResponse result = mainPickService.getRandomThemePicks(userId, pageable);
         return CommonResponse.ok(result);
     }
 
@@ -279,7 +338,7 @@ public class PersonalizedPickController {
 
         PageRequest pageable = PageRequest.of(page, size);
 
-        PersonalizedSectionResponse result = personalizedPickService.getIntersectionPicks(pageable);
+        PersonalizedSectionResponse result = mainPickService.getIntersectionPicks(pageable);
         return CommonResponse.ok(result);
     }
 
@@ -334,7 +393,7 @@ public class PersonalizedPickController {
             @Parameter(description = "한 페이지 크기", example = "20") @RequestParam(defaultValue = "20") int size) {
 
         PageRequest pageable = PageRequest.of(page, size);
-        return CommonResponse.ok(personalizedPickService.getHiddenMasterpieces(pageable));
+        return CommonResponse.ok(mainPickService.getHiddenMasterpieces(pageable));
     }
 
 
@@ -401,7 +460,7 @@ public class PersonalizedPickController {
 
         Long userId = (userDetails != null) ? userDetails.getId() : null;
         PageRequest pageable = PageRequest.of(page, size);
-        PersonalizedSectionResponse result = personalizedPickService.getTrendingPicks(userId, pageable);
+        PersonalizedSectionResponse result = mainPickService.getTrendingPicks(userId, pageable);
         return CommonResponse.ok(result);
     }
 
@@ -469,7 +528,7 @@ public class PersonalizedPickController {
 
         Long userId = (userDetails != null) ? userDetails.getId() : null;
         PageRequest pageable = PageRequest.of(page, size);
-        PersonalizedSectionResponse result = personalizedPickService.getQuickPlays(userId, pageable);
+        PersonalizedSectionResponse result = mainPickService.getQuickPlays(userId, pageable);
         return CommonResponse.ok(result);
     }
 }

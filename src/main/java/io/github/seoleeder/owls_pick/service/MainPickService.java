@@ -1,6 +1,9 @@
 package io.github.seoleeder.owls_pick.service;
 
-import io.github.seoleeder.owls_pick.dto.PersonalizedSectionResponse;
+import io.github.seoleeder.owls_pick.dto.UpcomingGameResponse;
+import io.github.seoleeder.owls_pick.dto.section.PersonalizedSectionResponse;
+import io.github.seoleeder.owls_pick.dto.section.UpcomingSectionResponse;
+import io.github.seoleeder.owls_pick.entity.game.Game;
 import io.github.seoleeder.owls_pick.entity.user.User;
 import io.github.seoleeder.owls_pick.entity.game.enums.GameSortType;
 import io.github.seoleeder.owls_pick.entity.game.enums.GenreType;
@@ -12,6 +15,8 @@ import io.github.seoleeder.owls_pick.global.util.GameResponseConverter;
 import io.github.seoleeder.owls_pick.repository.Custom.GameRepositoryCustom;
 import io.github.seoleeder.owls_pick.repository.UserRepository;
 import io.github.seoleeder.owls_pick.repository.dto.GameWithReviewStatDto;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -21,6 +26,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import jakarta.annotation.PostConstruct;
+
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -31,7 +38,7 @@ import java.util.concurrent.ThreadLocalRandom;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-public class PersonalizedPickService {
+public class MainPickService {
 
     private final GameRepositoryCustom gameRepository;
     private final UserRepository userRepository;
@@ -77,6 +84,25 @@ public class PersonalizedPickService {
         // 갱신이 완료되면 한 번에 덮어쓰기 (동시성 이슈 최소화)
         this.validCombinations = newCombinations;
         log.info("Memory cache updated successfully. Total valid combinations loaded: {}", validCombinations.size());
+    }
+
+    /**
+     * 출시 예정일이 N개월 이내인 출시 예정 기대작 조회
+     * */
+    @Transactional(readOnly = true)
+    public UpcomingSectionResponse getUpcomingGames(Pageable pageable) {
+
+        CurationProperties.Upcoming props = curationProps.upcoming();
+
+        LocalDate today = LocalDate.now();
+        LocalDate maxDate = today.plusMonths(props.periodMonths()); // 출시 예정일 필터링을 위한 N개월 설정 값
+
+        Page<Game> upcomingGames = gameRepository.findUpcomingGames(today, maxDate, props.minHypes(), pageable);
+
+        // Game 엔티티 -> Upcoming 전용 DTO
+        Page<UpcomingGameResponse> dtoPage = upcomingGames.map(responseConverter::convertToUpcomingDto);
+
+        return new UpcomingSectionResponse("출시 예정 최고 기대작", dtoPage);
     }
 
     /**
@@ -164,7 +190,7 @@ public class PersonalizedPickService {
         log.info("Fetching hidden masterpieces.");
         CurationProperties.HiddenMasterpiece props = curationProps.hiddenMasterpiece();
         Page<GameWithReviewStatDto> games = gameRepository.findHiddenMasterpieces(
-                props.minScore(),
+                props.minReviewScore(),
                 props.minReviews(),
                 props.maxReviews(),
                 pageable
@@ -183,7 +209,7 @@ public class PersonalizedPickService {
         log.info("Fetching trending picks for userId: {}. Selected tag: {}", userId, safeTag);
 
         Page<GameWithReviewStatDto> games = gameRepository.findTrendingGamesByTag(
-                safeTag, curationProps.trending().minScore(), pageable
+                safeTag, curationProps.trending().minReviewScore(), pageable
         );
         return new PersonalizedSectionResponse(safeTag, responseConverter.convertPage(games));
     }

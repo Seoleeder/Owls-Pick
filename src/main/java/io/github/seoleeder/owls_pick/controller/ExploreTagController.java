@@ -1,7 +1,7 @@
 package io.github.seoleeder.owls_pick.controller;
 
+import io.github.seoleeder.owls_pick.dto.GameResponse;
 import io.github.seoleeder.owls_pick.dto.TagResponse;
-import io.github.seoleeder.owls_pick.dto.GameResponseDto;
 import io.github.seoleeder.owls_pick.entity.game.enums.GameSortType;
 import io.github.seoleeder.owls_pick.entity.game.enums.GenreType;
 import io.github.seoleeder.owls_pick.entity.game.enums.ThemeType;
@@ -233,7 +233,7 @@ public class ExploreTagController {
             )
     })
     @GetMapping("/genres/{genre}/games")
-    public CommonResponse<Page<GameResponseDto>> getGamesByGenre(
+    public CommonResponse<Page<GameResponse>> getGamesByGenre(
             @Parameter(description = "장르 코드", example = "RPG") @PathVariable GenreType genre,
             @Parameter(description = "정렬 기준", example = "POPULAR") @RequestParam(defaultValue = "POPULAR") GameSortType sort,
             @Parameter(description = "페이지 번호 (0부터 시작)", example = "0") @RequestParam(defaultValue = "0") int page,
@@ -317,7 +317,7 @@ public class ExploreTagController {
             )
     })
     @GetMapping("/themes/{theme}/games")
-    public CommonResponse<Page<GameResponseDto>> getGamesByTheme(
+    public CommonResponse<Page<GameResponse>> getGamesByTheme(
             @Parameter(description = "테마 코드", example = "FANTASY") @PathVariable ThemeType theme,
             @Parameter(description = "정렬 기준", example = "NEWEST") @RequestParam(defaultValue = "POPULAR") GameSortType sort,
             @Parameter(description = "페이지 번호 (0부터 시작)", example = "0") @RequestParam(defaultValue = "0") int page,
