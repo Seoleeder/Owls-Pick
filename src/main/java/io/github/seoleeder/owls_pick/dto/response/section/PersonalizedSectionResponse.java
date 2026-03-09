@@ -1,6 +1,6 @@
-package io.github.seoleeder.owls_pick.dto.section;
+package io.github.seoleeder.owls_pick.dto.response.section;
 
-import io.github.seoleeder.owls_pick.dto.GameResponse;
+import io.github.seoleeder.owls_pick.dto.response.GameResponse;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Getter;

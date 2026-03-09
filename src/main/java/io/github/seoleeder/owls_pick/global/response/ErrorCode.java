@@ -16,6 +16,12 @@ public enum ErrorCode {
     UNSUPPORTED_PROVIDER(40002, HttpStatus.BAD_REQUEST, "지원하지 않는 소셜 로그인 제공자입니다."),
     INVALID_AUTHORIZATION_CODE(40003, HttpStatus.BAD_REQUEST, "인가 코드가 만료되었거나 유효하지 않습니다. "),
 
+    // 검색 API용
+    INVALID_PRICE_RANGE(40004, HttpStatus.BAD_REQUEST, "최소 가격은 최대 가격보다 클 수 없습니다."),
+    INVALID_PLAYTIME_RANGE(40005, HttpStatus.BAD_REQUEST, "최소 플레이타임은 최대 플레이타임보다 클 수 없습니다."),
+    SEARCH_KEYWORD_TOO_LONG(40006, HttpStatus.BAD_REQUEST, "검색어는 최대 50자까지만 입력 가능합니다."),
+
+
     // 401 Unauthorized
     UNAUTHORIZED(40100, HttpStatus.UNAUTHORIZED, "인증이 유효하지 않습니다"),
     ADMIN_KEY_ERROR(40101, HttpStatus.UNAUTHORIZED, "관리자 인증이 유효하지 않습니다"),

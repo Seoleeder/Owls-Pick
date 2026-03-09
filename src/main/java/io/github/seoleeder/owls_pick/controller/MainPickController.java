@@ -1,7 +1,7 @@
 package io.github.seoleeder.owls_pick.controller;
 
-import io.github.seoleeder.owls_pick.dto.section.PersonalizedSectionResponse;
-import io.github.seoleeder.owls_pick.dto.section.UpcomingSectionResponse;
+import io.github.seoleeder.owls_pick.dto.response.section.PersonalizedSectionResponse;
+import io.github.seoleeder.owls_pick.dto.response.section.UpcomingSectionResponse;
 import io.github.seoleeder.owls_pick.global.response.CommonResponse;
 import io.github.seoleeder.owls_pick.global.security.CustomUserDetails;
 import io.github.seoleeder.owls_pick.service.MainPickService;

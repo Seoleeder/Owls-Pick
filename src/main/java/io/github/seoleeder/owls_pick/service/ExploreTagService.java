@@ -1,7 +1,7 @@
 package io.github.seoleeder.owls_pick.service;
 
-import io.github.seoleeder.owls_pick.dto.GameResponse;
-import io.github.seoleeder.owls_pick.dto.TagResponse;
+import io.github.seoleeder.owls_pick.dto.response.GameResponse;
+import io.github.seoleeder.owls_pick.dto.response.TagResponse;
 import io.github.seoleeder.owls_pick.entity.game.enums.GameSortType;
 import io.github.seoleeder.owls_pick.entity.game.enums.GenreType;
 import io.github.seoleeder.owls_pick.entity.game.enums.ThemeType;

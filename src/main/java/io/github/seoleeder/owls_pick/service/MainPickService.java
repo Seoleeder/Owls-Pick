@@ -1,8 +1,8 @@
 package io.github.seoleeder.owls_pick.service;
 
-import io.github.seoleeder.owls_pick.dto.UpcomingGameResponse;
-import io.github.seoleeder.owls_pick.dto.section.PersonalizedSectionResponse;
-import io.github.seoleeder.owls_pick.dto.section.UpcomingSectionResponse;
+import io.github.seoleeder.owls_pick.dto.response.UpcomingGameResponse;
+import io.github.seoleeder.owls_pick.dto.response.section.PersonalizedSectionResponse;
+import io.github.seoleeder.owls_pick.dto.response.section.UpcomingSectionResponse;
 import io.github.seoleeder.owls_pick.entity.game.Game;
 import io.github.seoleeder.owls_pick.entity.user.User;
 import io.github.seoleeder.owls_pick.entity.game.enums.GameSortType;
@@ -12,11 +12,9 @@ import io.github.seoleeder.owls_pick.global.config.properties.CurationProperties
 import io.github.seoleeder.owls_pick.global.response.CustomException;
 import io.github.seoleeder.owls_pick.global.response.ErrorCode;
 import io.github.seoleeder.owls_pick.global.util.GameResponseConverter;
-import io.github.seoleeder.owls_pick.repository.Custom.GameRepositoryCustom;
+import io.github.seoleeder.owls_pick.repository.GameRepository;
 import io.github.seoleeder.owls_pick.repository.UserRepository;
 import io.github.seoleeder.owls_pick.repository.dto.GameWithReviewStatDto;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -40,7 +38,7 @@ import java.util.concurrent.ThreadLocalRandom;
 @Transactional(readOnly = true)
 public class MainPickService {
 
-    private final GameRepositoryCustom gameRepository;
+    private final GameRepository gameRepository;
     private final UserRepository userRepository;
     private final CurationProperties curationProps;
     private final GameResponseConverter responseConverter;

@@ -1,7 +1,7 @@
 package io.github.seoleeder.owls_pick.global.util; // 혹은 component, mapper 등 적절한 패키지
 
-import io.github.seoleeder.owls_pick.dto.GameResponse;
-import io.github.seoleeder.owls_pick.dto.UpcomingGameResponse;
+import io.github.seoleeder.owls_pick.dto.response.GameResponse;
+import io.github.seoleeder.owls_pick.dto.response.UpcomingGameResponse;
 import io.github.seoleeder.owls_pick.entity.game.Game;
 import io.github.seoleeder.owls_pick.entity.game.ReviewStat;
 import io.github.seoleeder.owls_pick.entity.game.StoreDetail;

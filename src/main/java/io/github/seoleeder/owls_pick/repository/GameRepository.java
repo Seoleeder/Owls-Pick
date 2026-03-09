@@ -1,7 +1,9 @@
 package io.github.seoleeder.owls_pick.repository;
 
 import io.github.seoleeder.owls_pick.entity.game.Game;
-import io.github.seoleeder.owls_pick.repository.Custom.GameRepositoryCustom;
+import io.github.seoleeder.owls_pick.repository.Custom.game.GameMainPickRepositoryCustom;
+import io.github.seoleeder.owls_pick.repository.Custom.game.GameCommonRepositoryCustom;
+import io.github.seoleeder.owls_pick.repository.Custom.game.GameSearchRepositoryCustom;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -9,7 +11,10 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface GameRepository extends JpaRepository<Game, Long>, GameRepositoryCustom {
+public interface GameRepository extends JpaRepository<Game, Long>,
+                                        GameCommonRepositoryCustom,
+                                        GameMainPickRepositoryCustom,
+                                        GameSearchRepositoryCustom {
 
     //ITAD ID가 존재하지 않는 게임 조회
     //null이거나 NONE이거나
