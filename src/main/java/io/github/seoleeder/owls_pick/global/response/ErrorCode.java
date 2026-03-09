@@ -35,6 +35,8 @@ public enum ErrorCode {
     // 404 Not Found
     NOT_FOUND_END_POINT(40400, HttpStatus.NOT_FOUND, "존재하지 않는 API입니다."),
     NOT_FOUND_USER(40401, HttpStatus.NOT_FOUND, "존재하지 않는 사용자입니다."),
+    NOT_FOUND_GAME(40402, HttpStatus.NOT_FOUND, "존재하지 않는 게임입니다."),
+
 
     // 409 Conflict
     CONFLICT(40900,HttpStatus.CONFLICT,""),
