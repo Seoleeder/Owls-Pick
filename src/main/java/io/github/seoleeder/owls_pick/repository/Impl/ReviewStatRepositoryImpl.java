@@ -3,14 +3,12 @@ package io.github.seoleeder.owls_pick.repository.Impl;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import io.github.seoleeder.owls_pick.repository.Custom.ReviewStatRepositoryCustom;
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 
 import static io.github.seoleeder.owls_pick.entity.game.QReview.review;
 import static io.github.seoleeder.owls_pick.entity.game.QReviewStat.reviewStat;
 
-@Repository
 @RequiredArgsConstructor
 public class ReviewStatRepositoryImpl implements ReviewStatRepositoryCustom {
 

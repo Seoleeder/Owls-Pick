@@ -1,6 +1,6 @@
 package io.github.seoleeder.owls_pick.controller;
 
-import io.github.seoleeder.owls_pick.dto.DashboardResponse;
+import io.github.seoleeder.owls_pick.dto.response.DashboardResponse;
 import io.github.seoleeder.owls_pick.entity.game.Dashboard.CurationType;
 import io.github.seoleeder.owls_pick.global.response.CommonResponse;
 import io.github.seoleeder.owls_pick.service.DashboardService;

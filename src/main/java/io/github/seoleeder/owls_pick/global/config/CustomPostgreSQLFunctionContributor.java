@@ -29,5 +29,11 @@ public class CustomPostgreSQLFunctionContributor implements FunctionContributor 
          */
         registry.registerPattern("array_overlap", "(?1 && ?2)");
 
+        /*
+         * similarity: 두 문자열 사이의 유사도를 0 ~ 1 사이로 반환
+         * similarity(title, 'Elden')
+         */
+        registry.registerPattern("similarity", "similarity(?1, ?2)");
+
     }
 }

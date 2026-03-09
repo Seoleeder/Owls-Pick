@@ -1,7 +1,7 @@
 package io.github.seoleeder.owls_pick.service;
 
-import io.github.seoleeder.owls_pick.dto.OnboardingRequest;
-import io.github.seoleeder.owls_pick.dto.UserStatusResponse;
+import io.github.seoleeder.owls_pick.dto.request.OnboardingRequest;
+import io.github.seoleeder.owls_pick.dto.response.UserStatusResponse;
 import io.github.seoleeder.owls_pick.global.response.CustomException;
 import io.github.seoleeder.owls_pick.global.response.ErrorCode;
 import io.github.seoleeder.owls_pick.repository.UserRepository;

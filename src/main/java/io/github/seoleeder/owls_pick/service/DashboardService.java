@@ -1,7 +1,7 @@
 package io.github.seoleeder.owls_pick.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.github.seoleeder.owls_pick.dto.DashboardResponse;
+import io.github.seoleeder.owls_pick.dto.response.DashboardResponse;
 import io.github.seoleeder.owls_pick.entity.game.Dashboard;
 import io.github.seoleeder.owls_pick.entity.game.Dashboard.CurationType;
 import io.github.seoleeder.owls_pick.entity.game.Game;

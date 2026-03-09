@@ -1,4 +1,4 @@
-package io.github.seoleeder.owls_pick.dto;
+package io.github.seoleeder.owls_pick.dto.response;
 
 import io.github.seoleeder.owls_pick.entity.user.User;
 
