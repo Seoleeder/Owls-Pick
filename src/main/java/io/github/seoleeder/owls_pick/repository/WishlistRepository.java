@@ -11,4 +11,7 @@ public interface WishlistRepository extends JpaRepository<Wishlist, WishlistId> 
 
     // 특정 게임이 위시리스트에 담긴 총 횟수(유저 수) 조회
     long countByGameId(Long gameId);
+
+    // 특정 사용자가 특정 게임을 위시리스트에 담았는지 여부
+    boolean existsByGameIdAndUserId(Long gameId, Long userId);
 }

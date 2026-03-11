@@ -26,8 +26,6 @@ import java.util.List;
 public class ExploreTagService {
 
     private final GameRepository gameRepository;
-    private final GamePriceService gamePriceService;
-    private final IgdbImageUrlProvider imageUrlProvider;
     private final GameResponseConverter responseConverter;
 
     // 메인 페이지 노출용 메서드
