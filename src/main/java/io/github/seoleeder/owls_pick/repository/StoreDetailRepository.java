@@ -18,4 +18,7 @@ public interface StoreDetailRepository extends JpaRepository<StoreDetail, Long>,
 
     // 여러 게임 ID에 대한 모든 스토어 상세 정보 조회
     List<StoreDetail> findAllByGameIdIn(List<Long> gameIds);
+
+    // 특정 게임의 모든 스토어 상세 정보 조회
+    List<StoreDetail> findByGameId(Long gameId);
 }

@@ -121,7 +121,8 @@ create table public.review_stat
             references public.game,
     updated_at        timestamp(6),
     review_score_desc varchar(30),
-    weekly_review integer not null default 0
+    weekly_review integer not null default 0,
+    review_summary TEXT
 );
 
 create table public.screenshot

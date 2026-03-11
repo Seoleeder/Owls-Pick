@@ -10,4 +10,6 @@ import java.util.List;
 @Repository
 public interface ScreenshotRepository extends JpaRepository<Screenshot, Long> {
     void deleteByGameIn(List<Game> games);
+
+    List<Screenshot> findByGameId(Long gameId);
 }

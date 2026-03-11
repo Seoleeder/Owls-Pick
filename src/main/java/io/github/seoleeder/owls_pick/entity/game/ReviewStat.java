@@ -40,6 +40,9 @@ public class ReviewStat {
     @Builder.Default
     private int weeklyReview = 0;
 
+    @Column(columnDefinition = "TEXT")
+    private String reviewSummary;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 

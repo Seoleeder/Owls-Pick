@@ -10,4 +10,7 @@ import java.util.List;
 @Repository
 public interface LanguageSupportRepository extends JpaRepository<LanguageSupport, Long> {
     void deleteByGameIn(List<Game> games);
+
+    // 특정 게임의 모든 언어 지원 정보 조회
+    List<LanguageSupport> findByGameId(Long gameId);
 }
