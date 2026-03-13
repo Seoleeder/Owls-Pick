@@ -139,11 +139,13 @@ public class MainPickService {
      * [Section 3] 단일 테마 랜덤 탐색 (성인 태그 EROTIC 필터링)
      */
     public PersonalizedSectionResponse getRandomThemePicks(Long userId, Pageable pageable) {
-        User user = getUser(userId);
+
+        // 로그인한 사용자가 성인일 경우 true 반환
+        final boolean isAdult = (userId != null) && getUser(userId).isAdultUser();
 
         // 성인 태그를 제외한 테마 태그 목록
         List<ThemeType> safeThemes = Arrays.stream(ThemeType.values())
-                .filter(theme -> user.isAdultUser() || theme != ThemeType.EROTIC)
+                .filter(theme -> isAdult || theme != ThemeType.EROTIC)
                 .toList();
 
         // 테마 목록 중 테마 태그 하나 선택
