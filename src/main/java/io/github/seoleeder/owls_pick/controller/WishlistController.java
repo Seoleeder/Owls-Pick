@@ -2,6 +2,7 @@ package io.github.seoleeder.owls_pick.controller;
 
 import io.github.seoleeder.owls_pick.global.security.CustomUserDetails;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -64,6 +65,7 @@ public class WishlistController {
                                     """)))
     })
     @PostMapping
+    @PreAuthorize("isAuthenticated()")
     public CommonResponse<WishlistToggleResponse> toggleWishlist(
             @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails userDetails,
             @Parameter(description = "게임 ID", example = "1") @PathVariable Long gameId

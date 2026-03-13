@@ -1,7 +1,9 @@
 package io.github.seoleeder.owls_pick.global.response;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.validation.FieldError;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
@@ -30,6 +32,20 @@ public class GlobalExceptionHandler {
     public CommonResponse<?> handleTypeMismatchException(MethodArgumentTypeMismatchException e) {
         log.error("handleTypeMismatchException() in GlobalExceptionHandler : {}", e.getMessage());
         // ErrorCode에 BAD_REQUEST나 INVALID_PARAMETER 같은 400 에러 코드가 있다면 그걸 넣어주세요!
+        return CommonResponse.fail(ErrorCode.INVALID_PARAMETER);
+    }
+    // @Valid 어노테이션으로 인한 DTO 검증 실패 예외
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public CommonResponse<?> handleValidationException(MethodArgumentNotValidException e) {
+        // DTO에 정의된 여러 에러 중 첫 번째 에러의 메시지를 가져옵니다.
+        // (예: "닉네임은 2자 이상 20자 이하로 입력해주세요.")
+        String errorMessage = e.getBindingResult().getFieldErrors().stream()
+                .findFirst()
+                .map(FieldError::getDefaultMessage)
+                .orElse("입력값이 올바르지 않습니다.");
+
+        log.error("handleValidationException() in GlobalExceptionHandler : {}", errorMessage);
+
         return CommonResponse.fail(ErrorCode.INVALID_PARAMETER);
     }
 

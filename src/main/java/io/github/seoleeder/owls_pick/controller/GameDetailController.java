@@ -120,7 +120,7 @@ public class GameDetailController {
             ),
             @ApiResponse(
                     responseCode = "404",
-                    description = "존재하지 않는 게임 (NOT_FOUND_GAME)",
+                    description = "존재하지 않는 게임",
                     content = @Content(mediaType = "application/json",
                             examples = @ExampleObject(value = """
                                     {

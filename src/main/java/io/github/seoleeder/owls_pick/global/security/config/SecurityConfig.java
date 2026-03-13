@@ -6,6 +6,7 @@ import io.github.seoleeder.owls_pick.global.security.jwt.JwtAuthenticationFilter
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -18,6 +19,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
@@ -47,15 +49,27 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/",
                                 "/admin/**",
+                                "/error",
+                                // 소셜 관련
                                 "/api/auth/login/**",
                                 "/api/auth/authorize/**",
                                 "/api/auth/reissue",
-                                "/api/dev/auth/**",
                                 "/api/webhook/**",
+
+                                "/api/dashboard/**",    // 대시보드 차트
+                                "/api/explore/**",      // 탐색 태그
+                                "/api/games/**",        // 게임 상세
+                                "/api/main-picks/**",   // 맞춤 픽
+
+                                "/api/search/**",       // 통합 검색
+
+                                // 개발용 백도어
+                                "/api/dev/auth/**",
+
+                                // swagger 관련
                                 "/swagger-ui.html",
                                 "/swagger-ui/**",
-                                "/v3/api-docs/**",
-                                "/error"
+                                "/v3/api-docs/**"
                         ).permitAll()
 
                         // 그 외 모든 요청은 토큰 인증 필요

@@ -24,6 +24,9 @@ public class User {
     @Column(length = 30, nullable = false)
     private String name;
 
+    @Column(length = 30, unique = true)
+    private String nickname;
+
     @Column(nullable = false)
     private String email;
 
@@ -33,6 +36,11 @@ public class User {
     @Builder.Default
     @Column(nullable = false)
     private boolean isOnboarded = false; // 온보딩 완료 여부
+
+    // 할인 푸시 알림 수신 동의 여부
+    @Builder.Default
+    @Column(nullable = false)
+    private boolean isDiscountNotificationEnabled = false;
 
     /** List 타입을 DB에서 이해할 수 있도록 Array타입으로 변환 */
     @Setter
@@ -63,6 +71,10 @@ public class User {
         this.updatedAt = LocalDateTime.now();
     }
 
+
+
+    // ------ 온보딩용 메서드 ------
+
     /**
      * 성인 여부 계산
      * */
@@ -78,7 +90,8 @@ public class User {
     /**
      * 온보딩 정보 업데이트
      */
-    public void completeOnboarding(java.time.LocalDate birthDate, List<String> tags, List<String> stores) {
+    public void completeOnboarding(String nickname, LocalDate birthDate, List<String> tags, List<String> stores) {
+        this.nickname = nickname;
         this.birthDate = birthDate;
         this.preferredTags = tags;
         this.preferredStores = stores;
@@ -86,5 +99,39 @@ public class User {
     }
 
 
+    // ------ 회원 정보 수정용 메서드 ------
+
+    /**
+     * 프로필 닉네임 수정
+     * */
+    public void updateNickname(String nickname) {
+        if (nickname != null && !nickname.isBlank()) {
+            this.nickname = nickname;
+        }
+    }
+
+    /**
+     * 게이머 취향(선호 태그, 스토어) 수정
+     */
+    public void updatePreferredTags(List<String> tags) {
+        if (tags != null) {
+            this.preferredTags = tags;
+        }
+    }
+
+    public void updatePreferredStores(List<String> stores) {
+        if (stores != null) {
+            this.preferredStores = stores;
+        }
+    }
+
+    /**
+     * 할인 알림 설정 토글 (ON/OFF)
+     */
+    public void updateDiscountNotification(Boolean isEnabled) {
+        if (isEnabled != null) {
+            this.isDiscountNotificationEnabled = isEnabled;
+        }
+    }
 
 }

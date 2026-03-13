@@ -41,6 +41,7 @@ public enum ErrorCode {
     // 409 Conflict
     CONFLICT(40900,HttpStatus.CONFLICT,""),
     ALREADY_ONBOARDED(40901, HttpStatus.CONFLICT, "이미 온보딩이 완료되었습니다."),
+    DUPLICATE_NICKNAME(40902, HttpStatus.CONFLICT, "이미 사용 중인 닉네임입니다."),
 
     // 500 Internal Server Error
     INTERNAL_SERVER_ERROR(50000, HttpStatus.INTERNAL_SERVER_ERROR, "서버 내부 오류입니다."),

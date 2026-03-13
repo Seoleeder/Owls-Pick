@@ -12,6 +12,11 @@ import java.util.List;
  */
 @Schema(description = "사용자 온보딩 정보 등록 요청 DTO")
 public record OnboardingRequest(
+        @Schema(description = "닉네임", example = "이찌")
+        @NotNull(message = "Nickname is required.")
+        @Size(min = 2, max = 20, message = "닉네임은 2자 이상 20자 이하로 입력해주세요.")
+        String nickname,
+
         @Schema(description = "생년월일", example = "1994-10-31")
         @NotNull(message = "Birth date is required.")
         LocalDate birthDate,
