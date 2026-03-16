@@ -1,25 +1,30 @@
 package io.github.seoleeder.owls_pick.service;
 
-import io.github.seoleeder.owls_pick.dto.request.MyPageUpdateRequest;
+import io.github.seoleeder.owls_pick.dto.request.NotificationToggleRequest;
+import io.github.seoleeder.owls_pick.dto.request.ProfileUpdateRequest;
 import io.github.seoleeder.owls_pick.dto.request.OnboardingRequest;
 import io.github.seoleeder.owls_pick.dto.response.MyPageResponse;
 import io.github.seoleeder.owls_pick.dto.response.UserStatusResponse;
 import io.github.seoleeder.owls_pick.entity.user.SocialAccount;
 import io.github.seoleeder.owls_pick.global.response.CustomException;
 import io.github.seoleeder.owls_pick.global.response.ErrorCode;
+import io.github.seoleeder.owls_pick.repository.FcmTokenRepository;
 import io.github.seoleeder.owls_pick.repository.SocialAccountRepository;
 import io.github.seoleeder.owls_pick.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import io.github.seoleeder.owls_pick.entity.user.User;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class UserProfileService {
 
     private final UserRepository userRepository;
     private final SocialAccountRepository socialAccountRepository;
+    private final FcmTokenRepository fcmTokenRepository;
 
     // ------ 온보딩 메서드 ------
 
@@ -45,11 +50,13 @@ public class UserProfileService {
 
         // 이미 온보딩을 완료한 유저인지 검증
         if (user.isOnboarded()) {
+            log.warn("Onboarding failed: User {} is already onboarded.", userId);
             throw new CustomException(ErrorCode.ALREADY_ONBOARDED);
         }
 
         // 닉네임 중복 검증
         if (!isNicknameAvailable(request.nickname())) {
+            log.warn("Onboarding failed: Nickname '{}' is already in use.", request.nickname());
             throw new CustomException(ErrorCode.DUPLICATE_NICKNAME); // 예: 409 Conflict (에러 코드 추가 필요)
         }
 
@@ -60,6 +67,8 @@ public class UserProfileService {
                 request.preferredTags(),
                 request.preferredStores()
         );
+
+        log.info("Successfully completed onboarding for User: {}", userId);
     }
 
     // ------ 마이페이지 메서드 ------
@@ -93,32 +102,37 @@ public class UserProfileService {
      * 마이 페이지 정보 부분 수정 (PATCH)
      */
     @Transactional
-    public void updateMyPage(Long userId, MyPageUpdateRequest request) {
+    public void updateMyProfile(Long userId, ProfileUpdateRequest request) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND_USER));
 
-        // 닉네임 변경 요청
-        if (request.nickname() != null) {
-            // 기존 닉네임과 다를 경우에만 중복 검사 실행
-            if (!user.getNickname().equals(request.nickname()) && !isNicknameAvailable(request.nickname())) {
+        // 닉네임이 변경되었을 경우에만 중복 검사
+        if (request.nickname() != null && !user.getNickname().equals(request.nickname())) {
+            if (!isNicknameAvailable(request.nickname())) {
+                log.warn("Profile update failed: Nickname '{}' is already in use.", request.nickname());
                 throw new CustomException(ErrorCode.DUPLICATE_NICKNAME);
             }
-            user.updateNickname(request.nickname());
         }
 
-        // 위시리스트 알림 설정 변경 요청
-        if (request.isDiscountNotificationEnabled() != null) {
-            user.updateDiscountNotification(request.isDiscountNotificationEnabled());
-        }
+        log.info("Successfully updated profile for User: {}", userId);
+        user.updateProfile(request);
+    }
 
-        // 선호 태그 변경 요청
-        if (request.preferredTags() != null) {
-            user.updatePreferredTags(request.preferredTags());
-        }
+    @Transactional
+    public void toggleDiscountNotification(Long userId, NotificationToggleRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND_USER));
 
-        // 선호 스토어 변경 요청
-        if (request.preferredStores() != null) {
-            user.updatePreferredStores(request.preferredStores());
+        boolean isEnabled = request.isDiscountNotificationEnabled();
+
+        // 유저의 수신 동의 상태 변경
+        user.updateDiscountNotification(isEnabled);
+        log.info("Toggled discount notification for User: {} to {}", userId, isEnabled);
+
+        // 비동의 처리 시, 해당 유저의 모든 FCM 토큰 즉시 파기
+        if (!isEnabled) {
+            fcmTokenRepository.deleteAllByUserId(userId);
+            log.info("User {} revoked notification consent. All FCM tokens deleted.", userId);
         }
     }
 

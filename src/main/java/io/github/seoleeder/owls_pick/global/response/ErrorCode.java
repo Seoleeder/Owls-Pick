@@ -31,11 +31,16 @@ public enum ErrorCode {
     REVOKED_REFRESH_TOKEN(40105,HttpStatus.UNAUTHORIZED, "폐기되었거나 만료된 리프레시 토큰입니다."),
     INVALID_SIGNATURE(40106,HttpStatus.UNAUTHORIZED, "서명이 유효하지 않습니다."),
 
+    // 403 Forbidden
+    FORBIDDEN(40300,HttpStatus.FORBIDDEN, "금지된 요청입니다."),
+    UNCONSENTED_NOTIFICATION(40301,HttpStatus.FORBIDDEN, "알림 수신에 동의하지 않은 사용자입니다."),
+
 
     // 404 Not Found
     NOT_FOUND_END_POINT(40400, HttpStatus.NOT_FOUND, "존재하지 않는 API입니다."),
     NOT_FOUND_USER(40401, HttpStatus.NOT_FOUND, "존재하지 않는 사용자입니다."),
     NOT_FOUND_GAME(40402, HttpStatus.NOT_FOUND, "존재하지 않는 게임입니다."),
+    NOT_FOUND_NOTIFICATION(40402, HttpStatus.NOT_FOUND, "존재하지 않는 알림입니다."),
 
 
     // 409 Conflict
