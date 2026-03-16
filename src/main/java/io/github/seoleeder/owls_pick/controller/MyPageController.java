@@ -1,6 +1,7 @@
 package io.github.seoleeder.owls_pick.controller;
 
-import io.github.seoleeder.owls_pick.dto.request.MyPageUpdateRequest;
+import io.github.seoleeder.owls_pick.dto.request.NotificationToggleRequest;
+import io.github.seoleeder.owls_pick.dto.request.ProfileUpdateRequest;
 import io.github.seoleeder.owls_pick.dto.response.MyPageResponse;
 import io.github.seoleeder.owls_pick.dto.response.WishlistResponse;
 import io.github.seoleeder.owls_pick.global.response.CommonResponse;
@@ -141,9 +142,62 @@ public class MyPageController {
     @PatchMapping("/profile")
     public CommonResponse<Void> updateMyProfile(
             @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails userDetails,
-            @Valid @RequestBody MyPageUpdateRequest request
+            @Valid @RequestBody ProfileUpdateRequest request
     ) {
-        userProfileService.updateMyPage(userDetails.getId(), request);
+        userProfileService.updateMyProfile(userDetails.getId(), request);
+        return CommonResponse.ok(null);
+    }
+
+    @Operation(summary = "알림 설정 토글 (PATCH)", description = "할인 알림 수신 동의 여부를 변경합니다. 비동의 처리 시 서버에 저장된 사용자의 기기 토큰이 즉시 삭제됩니다.")
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "수정 성공",
+                    content = @Content(mediaType = "application/json",
+                            examples = @ExampleObject(value = """
+                                    {
+                                      "success": true,
+                                      "data": null,
+                                      "error": null
+                                    }
+                                    """))),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "잘못된 입력값 형식 (필수값 누락)",
+                    content = @Content(mediaType = "application/json",
+                            examples = @ExampleObject(value = """
+                                    {
+                                      "success": false,
+                                      "data": null,
+                                      "error": {
+                                        "code": "40001",
+                                        "message": "Discount notification setting is required."
+                                      }
+                                    }
+                                    """))),
+            @ApiResponse(
+                    responseCode = "500",
+                    description = "서버 내부 오류",
+                    content = @Content(mediaType = "application/json", examples = @ExampleObject(
+                            value = """
+                            {
+                              "success": false,
+                              "data": null,
+                              "error": {
+                                "code": "50000",
+                                "message": "서버 내부 오류입니다."
+                              }
+                            }
+                            """
+                    ))
+            )
+    })
+    @PatchMapping("/notification")
+    public CommonResponse<Void> toggleNotification(
+            @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails userDetails,
+            @Valid @RequestBody NotificationToggleRequest request
+    ) {
+        userProfileService.toggleDiscountNotification(userDetails.getId(), request);
         return CommonResponse.ok(null);
     }
 

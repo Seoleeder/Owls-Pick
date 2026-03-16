@@ -1,5 +1,6 @@
 package io.github.seoleeder.owls_pick.entity.user;
 
+import io.github.seoleeder.owls_pick.dto.request.ProfileUpdateRequest;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.JdbcTypeCode;
@@ -102,27 +103,12 @@ public class User {
     // ------ 회원 정보 수정용 메서드 ------
 
     /**
-     * 프로필 닉네임 수정
+     * 프로필 정보 선택적 업데이트 (닉네임, 선호 태그 및 스토어)
      * */
-    public void updateNickname(String nickname) {
-        if (nickname != null && !nickname.isBlank()) {
-            this.nickname = nickname;
-        }
-    }
-
-    /**
-     * 게이머 취향(선호 태그, 스토어) 수정
-     */
-    public void updatePreferredTags(List<String> tags) {
-        if (tags != null) {
-            this.preferredTags = tags;
-        }
-    }
-
-    public void updatePreferredStores(List<String> stores) {
-        if (stores != null) {
-            this.preferredStores = stores;
-        }
+    public void updateProfile(ProfileUpdateRequest request) {
+        if (request.nickname() != null) this.nickname = request.nickname();
+        if (request.preferredTags() != null) this.preferredTags = request.preferredTags();
+        if (request.preferredStores() != null) this.preferredStores = request.preferredStores();
     }
 
     /**

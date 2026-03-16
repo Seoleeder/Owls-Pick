@@ -26,6 +26,9 @@ out/
 !**/src/main/**/out/
 !**/src/test/**/out/
 
+### Firebase Secrets ###
+src/main/resources/firebase/*.json
+
 ### NetBeans ###
 /nbproject/private/
 /nbbuild/
