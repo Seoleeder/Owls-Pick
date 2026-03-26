@@ -495,4 +495,23 @@ public class GameRepositoryImpl implements GameRepositoryCustom {
         return Optional.ofNullable(result);
     }
 
+
+    /**
+     * 한글화된 설명은 null이면서, 원문(description/storyline)은 존재하는 데이터만
+     * 필터링하여 limit만큼 조회
+     */
+    @Override
+    public List<Game> findUnlocalizedGames(int limit) {
+        return queryFactory
+                .selectFrom(game)
+                .where(
+                        gameExpressions.needsDescriptionLocalization(game)
+                                .or(gameExpressions.needsStorylineLocalization(game))
+                )
+                .orderBy(game.id.asc())
+                .limit(limit)
+                .fetch();
+    }
+
+
 }

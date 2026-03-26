@@ -10,7 +10,7 @@ public record SteamReviewDetailResponse(
         String cursor
 ) {
     public record SteamReviewDetail(
-            @JsonProperty("recommendation_id") Long recommendationId,
+            @JsonProperty("recommendationid") Long recommendationId,
             Author author,
             @JsonProperty("weighted_vote_score") BigDecimal weightedVoteScore,
             @JsonProperty("review") String reviewText,

@@ -35,5 +35,10 @@ public class CustomPostgreSQLFunctionContributor implements FunctionContributor 
          */
         registry.registerPattern("similarity", "similarity(?1, ?2)");
 
+        /*
+         * unnest: 배열을 행(row)으로 평탄화
+         */
+        registry.registerPattern("unnest", "unnest(?1)");
+
     }
 }

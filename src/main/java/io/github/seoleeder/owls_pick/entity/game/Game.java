@@ -1,5 +1,7 @@
 package io.github.seoleeder.owls_pick.entity.game;
 
+import io.github.seoleeder.owls_pick.entity.game.enums.GameModeType;
+import io.github.seoleeder.owls_pick.entity.game.enums.PerspectiveType;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.JdbcTypeCode;
@@ -47,8 +49,14 @@ public class Game {
     @Column(columnDefinition = "TEXT")
     private String description;
 
+    @Column(name = "description_ko", columnDefinition = "TEXT")
+    private String descriptionKo;
+
     @Column(columnDefinition = "TEXT")
     private String storyline;
+
+    @Column(name = "storyline_ko", columnDefinition = "TEXT")
+    private String storylineKo;
 
     @Column
     private LocalDate firstRelease;
@@ -66,12 +74,12 @@ public class Game {
     @JdbcTypeCode(SqlTypes.ARRAY)
     @Builder.Default
     @Column(columnDefinition = "text[]")
-    private List<String> mode = new ArrayList<>();
+    private List<GameModeType> mode = new ArrayList<>();
 
     @JdbcTypeCode(SqlTypes.ARRAY)
     @Builder.Default
     @Column(columnDefinition = "text[]")
-    private List<String> perspective = new ArrayList<>();
+    private List<PerspectiveType> perspective = new ArrayList<>();
 
     @Column(length = 30)
     private String coverId;
@@ -128,8 +136,8 @@ public class Game {
             String coverId,
             String ratingKr,
             String ratingEsrb,
-            List<String> mode,
-            List<String> perspective,
+            List<GameModeType> mode,
+            List<PerspectiveType> perspective,
             LocalDateTime igdbUpdatedAt
     ) {
         if(this.igdbId == null) {
@@ -160,22 +168,31 @@ public class Game {
     }
 
     /**
+     * 게임 설명, 스토리라인 한글화 업데이트
+     */
+    public void updateLocalization(String descriptionKo, String storylineKo) {
+        this.descriptionKo = descriptionKo;
+        this.storylineKo = storylineKo;
+    }
+
+    /**
      *  심의 등급(국내 및 북미)과 태그 정보를 바탕으로 성인 콘텐츠 여부 판단 및 상태 갱신
      */
     public void evaluateAdultStatus(Tag tag) {
-        // 1. 한국 심의(GRAC) 검사: 문자열에 "18" 또는 "19"가 포함되어 있는지 확인
-        boolean isKrAdult = this.ratingKr != null &&
-                (this.ratingKr.contains("18") || this.ratingKr.contains("19"));
+        boolean isAdultRating = false;
 
-        // 2. 북미 심의(ESRB) 검사: 대소문자 무시하고 "M" 또는 "AO" 인지 확인
-        boolean isEsrbAdult = this.ratingEsrb != null &&
-                (this.ratingEsrb.equalsIgnoreCase("M") || this.ratingEsrb.equalsIgnoreCase("AO"));
+        // 심의 등급 판별 (국내 심의 우선)
+        if (this.ratingKr != null && !this.ratingKr.isBlank()) {
+            // 국내 심의 데이터가 존재하면 그것만으로 판단 (글로벌 심의는 무시)
+            isAdultRating = this.ratingKr.contains("18") || this.ratingKr.contains("19");
 
-        boolean isAdultRating = isKrAdult || isEsrbAdult;
-        // 2. 넘겨받은 태그가 19금인지 판단
+        } else if (this.ratingEsrb != null && !this.ratingEsrb.isBlank()) {
+            // 국내 심의 데이터가 없을 경우에만 글로벌 심의 등급으로 판단
+            isAdultRating = this.ratingEsrb.equalsIgnoreCase("M") || this.ratingEsrb.equalsIgnoreCase("AO");
+        }
         boolean hasAdultTag = (tag != null && tag.isAdult());
 
-        // 3. 둘 중 하나라도 해당하면 내 상태를 true로 변경
+        // 최종 상태 갱신 (청불 등급이거나, 성인 태그가 하나라도 있다면 true)
         this.isAdult = isAdultRating || hasAdultTag;
     }
 }

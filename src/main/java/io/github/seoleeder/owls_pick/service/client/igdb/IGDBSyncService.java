@@ -3,6 +3,8 @@ package io.github.seoleeder.owls_pick.service.client.igdb;
 import io.github.seoleeder.owls_pick.client.igdb.IGDBDataCollector;
 import io.github.seoleeder.owls_pick.client.igdb.dto.IGDBGameDetailResponse;
 import io.github.seoleeder.owls_pick.client.igdb.dto.IGDBGameSummaryResponse;
+import io.github.seoleeder.owls_pick.entity.game.enums.GameModeType;
+import io.github.seoleeder.owls_pick.entity.game.enums.PerspectiveType;
 import io.github.seoleeder.owls_pick.global.util.TimestampUtils;
 import io.github.seoleeder.owls_pick.entity.game.*;
 import io.github.seoleeder.owls_pick.repository.*;
@@ -232,8 +234,17 @@ public class IGDBSyncService {
 
                 // 리스트에서 DB에 저장될 '이름' 데이터만 추출
                 List<String> platforms = extractValues(dto.platforms(), IGDBGameSummaryResponse.Platform::name);
-                List<String> modes = extractValues(dto.modes(), IGDBGameSummaryResponse.GameMode::name);
-                List<String> perspectives = extractValues(dto.perspectives(), IGDBGameSummaryResponse.Perspective::name);
+                List<GameModeType> modes = extractValues(dto.modes(), IGDBGameSummaryResponse.GameMode::name)
+                        .stream()
+                        .map(GameModeType::fromEngName)
+                        .distinct()
+                        .toList();
+
+                List<PerspectiveType> perspectives = extractValues(dto.perspectives(), IGDBGameSummaryResponse.Perspective::name)
+                        .stream()
+                        .map(PerspectiveType::fromEngName)
+                        .distinct()
+                        .toList();
 
                 game.updateFromSummary(// Title (필요 시 로직 수정)
                         localTitle,
@@ -273,7 +284,6 @@ public class IGDBSyncService {
         List<Tag> tags = new ArrayList<>();
         List<Screenshot> screenshots = new ArrayList<>();
         List<LanguageSupport> languages = new ArrayList<>();
-        List<GameCompany> gameCompanies = new ArrayList<>();
 
         //GameCompanyId 중복 키 방지
         Map<GameCompanyId, GameCompany> gameCompanyMap = new HashMap<>();
@@ -426,7 +436,7 @@ public class IGDBSyncService {
         // 나머지 데이터 저장
         screenshotRepository.saveAll(screenshots);
         languageSupportRepository.saveAll(languages);
-        gameCompanyRepository.saveAll(gameCompanies);
+        gameCompanyRepository.saveAll(gameCompanyMap.values());
 
         //성인 게임 여부가 업데이트된 게임 데이터 저장
         gameRepository.saveAll(games);

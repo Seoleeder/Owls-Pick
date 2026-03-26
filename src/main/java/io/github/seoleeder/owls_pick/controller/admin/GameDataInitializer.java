@@ -1,6 +1,8 @@
-package io.github.seoleeder.owls_pick.controller;
+package io.github.seoleeder.owls_pick.controller.admin;
 
 import io.github.seoleeder.owls_pick.global.response.CommonResponse;
+import io.github.seoleeder.owls_pick.service.localization.KeywordLocalizationService;
+import io.github.seoleeder.owls_pick.service.localization.LocalizationService;
 import io.github.seoleeder.owls_pick.service.client.igdb.IGDBSyncService;
 import io.github.seoleeder.owls_pick.service.client.itad.ITADSyncService;
 import io.github.seoleeder.owls_pick.service.client.steam.SteamAppSyncService;
@@ -10,6 +12,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -33,6 +36,8 @@ public class GameDataInitializer {
     private final SteamReviewSyncService steamReviewService;
     private final IGDBSyncService igdbService;
     private final ITADSyncService itadService;
+    private final LocalizationService localizationService;
+    private final KeywordLocalizationService keywordLocalizationService;
 
     @Operation(summary = "Steam 앱 리스트 초기화",
                 description = "Steam에 등록된 앱의 ID, 타이틀 수집",
@@ -40,8 +45,27 @@ public class GameDataInitializer {
                     @Parameter(name = "X-ADMIN-KEY", description = "관리자 키", required = true, in = ParameterIn.HEADER)
                 })
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Steam 앱 리스트 수집 백그라운드 작업 시작 성공", content = @Content(schema = @Schema(implementation = CommonResponse.class))),
-            @ApiResponse(responseCode = "401", description = "관리자 인증 실패 (X-ADMIN-KEY 누락 또는 불일치)", content = @Content(schema = @Schema(implementation = CommonResponse.class)))
+            @ApiResponse(responseCode = "200", description = "Steam 앱 리스트 수집 백그라운드 작업 시작 성공",
+                    content = @Content(mediaType = "application/json",
+                            examples = @ExampleObject(value = """
+                                    {
+                                      "success": true,
+                                      "data": "Steam App List Sync Started",
+                                      "error": null
+                                    }
+                                    """))),
+            @ApiResponse(responseCode = "401", description = "관리자 인증 실패 (X-ADMIN-KEY 누락 또는 불일치)",
+                    content = @Content(mediaType = "application/json",
+                            examples = @ExampleObject(value = """
+                                    {
+                                      "success": false,
+                                      "data": null,
+                                      "error": {
+                                        "code": 40100,
+                                        "message": "권한이 없습니다."
+                                      }
+                                    }
+                                    """)))
     })
     @PostMapping("/steam-app-list")
     public CommonResponse<String> initSteamAppList(){
@@ -68,8 +92,27 @@ public class GameDataInitializer {
             }
     )
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Steam 리뷰 데이터 수집 백그라운드 작업 시작 성공", content = @Content(schema = @Schema(implementation = CommonResponse.class))),
-            @ApiResponse(responseCode = "401", description = "관리자 인증 실패", content = @Content(schema = @Schema(implementation = CommonResponse.class)))
+            @ApiResponse(responseCode = "200", description = "Steam 리뷰 데이터 수집 백그라운드 작업 시작 성공",
+                    content = @Content(mediaType = "application/json",
+                            examples = @ExampleObject(value = """
+                                    {
+                                      "success": true,
+                                      "data": "Steam App Review Sync Started",
+                                      "error": null
+                                    }
+                                    """))),
+            @ApiResponse(responseCode = "401", description = "관리자 인증 실패",
+                    content = @Content(mediaType = "application/json",
+                            examples = @ExampleObject(value = """
+                                    {
+                                      "success": false,
+                                      "data": null,
+                                      "error": {
+                                        "code": 40100,
+                                        "message": "권한이 없습니다."
+                                      }
+                                    }
+                                    """)))
     })
     @PostMapping("/reviews")
     public CommonResponse<String> initReviews(){
@@ -94,8 +137,27 @@ public class GameDataInitializer {
             }
     )
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Steam 대시보드 데이터 수집 백그라운드 작업 시작 성공", content = @Content(schema = @Schema(implementation = CommonResponse.class))),
-            @ApiResponse(responseCode = "401", description = "관리자 인증 실패", content = @Content(schema = @Schema(implementation = CommonResponse.class)))
+            @ApiResponse(responseCode = "200", description = "Steam 대시보드 데이터 수집 백그라운드 작업 시작 성공",
+                    content = @Content(mediaType = "application/json",
+                            examples = @ExampleObject(value = """
+                                    {
+                                      "success": true,
+                                      "data": "Steam Dashboard Sync Started",
+                                      "error": null
+                                    }
+                                    """))),
+            @ApiResponse(responseCode = "401", description = "관리자 인증 실패",
+                    content = @Content(mediaType = "application/json",
+                            examples = @ExampleObject(value = """
+                                    {
+                                      "success": false,
+                                      "data": null,
+                                      "error": {
+                                        "code": 40100,
+                                        "message": "권한이 없습니다."
+                                      }
+                                    }
+                                    """)))
     })
     @PostMapping("/dashboard")
     public CommonResponse<String> initDashboard() {
@@ -127,8 +189,18 @@ public class GameDataInitializer {
             }
     )
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "IGDB 메타데이터 수집 백그라운드 작업 시작 성공", content = @Content(schema = @Schema(implementation = CommonResponse.class))),
-            @ApiResponse(responseCode = "401", description = "관리자 인증 실패", content = @Content(schema = @Schema(implementation = CommonResponse.class)))
+            @ApiResponse(responseCode = "200", description = "IGDB 메타데이터 수집 백그라운드 작업 시작 성공",
+                    content = @Content(mediaType = "application/json",
+                            examples = @ExampleObject(value = """
+                                    {
+                                      "success": true,
+                                      "data": "IGDB Sync Started",
+                                      "error": null
+                                    }
+                                    """))),
+            @ApiResponse(responseCode = "401", description = "관리자 인증 실패",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = CommonResponse.class)))
     })
     @PostMapping("/igdb")
     public CommonResponse<String> initIgdb() {
@@ -153,8 +225,27 @@ public class GameDataInitializer {
             }
     )
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "ITAD 가격 데이터 수집 백그라운드 작업 시작 성공", content = @Content(schema = @Schema(implementation = CommonResponse.class))),
-            @ApiResponse(responseCode = "401", description = "관리자 인증 실패", content = @Content(schema = @Schema(implementation = CommonResponse.class)))
+            @ApiResponse(responseCode = "200", description = "ITAD 가격 데이터 수집 백그라운드 작업 시작 성공",
+                    content = @Content(mediaType = "application/json",
+                            examples = @ExampleObject(value = """
+                                    {
+                                      "success": true,
+                                      "data": "ITAD Sync Started",
+                                      "error": null
+                                    }
+                                    """))),
+            @ApiResponse(responseCode = "401", description = "관리자 인증 실패",
+                    content = @Content(mediaType = "application/json",
+                            examples = @ExampleObject(value = """
+                                    {
+                                      "success": false,
+                                      "data": null,
+                                      "error": {
+                                        "code": 40100,
+                                        "message": "권한이 없습니다."
+                                      }
+                                    }
+                                    """)))
     })
     @PostMapping("/itad")
     public CommonResponse<String> initItad() {
@@ -179,14 +270,33 @@ public class GameDataInitializer {
     }
 
     @Operation(summary = "전체 게임 데이터 구축",
-            description = "스팀 앱 리스트 수집  -> IGDB, ITAD, 스팀 리뷰 및 대시보드 데이터 병렬 수집",
+            description = "스팀 앱 리스트 수집  -> IGDB, ITAD, 스팀 리뷰 및 대시보드 데이터 병렬 수집-> 수집 완료 직후 한글화 엔진 자동 가동",
             parameters = {
                     @Parameter(name = "X-ADMIN-KEY", description = "관리자 키", required = true, in = ParameterIn.HEADER)
             }
     )
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "전체 게임 데이터 병렬 수집 백그라운드 작업 시작 성공", content = @Content(schema = @Schema(implementation = CommonResponse.class))),
-            @ApiResponse(responseCode = "401", description = "관리자 인증 실패", content = @Content(schema = @Schema(implementation = CommonResponse.class)))
+            @ApiResponse(responseCode = "200", description = "전체 게임 데이터 병렬 수집 백그라운드 작업 시작 성공",
+                    content = @Content(mediaType = "application/json",
+                            examples = @ExampleObject(value = """
+                                    {
+                                      "success": true,
+                                      "data": "Game Data Initialization Started in Background",
+                                      "error": null
+                                    }
+                                    """))),
+            @ApiResponse(responseCode = "401", description = "관리자 인증 실패",
+                    content = @Content(mediaType = "application/json",
+                            examples = @ExampleObject(value = """
+                                    {
+                                      "success": false,
+                                      "data": null,
+                                      "error": {
+                                        "code": 40100,
+                                        "message": "권한이 없습니다."
+                                      }
+                                    }
+                                    """)))
     })
     @PostMapping("/init-all")
     public CommonResponse<String> initAllGameData(){
@@ -202,11 +312,30 @@ public class GameDataInitializer {
                 log.info("Completed!");
 
                 // 2. Parallel Execution
-                // IGDB 데이터 초기화
+                // IGDB 데이터 초기화 및 한글과 파이프라인 연동
                 CompletableFuture<Void> futureIgdb = CompletableFuture.runAsync(() -> {
                     log.info("IGDB Sync Started");
                     igdbService.backfillAllGames();
                     log.info("IGDB Sync Finished");
+                }).thenRunAsync(() -> {
+
+                    // IGDB 메타데이터 수집이 완료되면 비동기로 대량 한글화 작업 시작
+
+                    // 게임 설명 및 스토리라인 파이프라인 가동 (단 한 줄로 축약됨)
+                    log.info("Starting Automatic Localization Pipeline after IGDB Sync...");
+                    try {
+                        localizationService.runPipeline();
+                    } catch (Exception e) {
+                        log.error("Automatic Localization Pipeline Failed", e);
+                    }
+
+                    // 키워드 한글화 파이프라인 가동
+                    log.info("Starting Automatic Keyword Localization Pipeline...");
+                    try {
+                        keywordLocalizationService.runPipeline();
+                    } catch (Exception e) {
+                        log.error("Automatic Keyword Localization Pipeline Failed", e);
+                    }
                 });
 
                 // ITAD 데이터 초기화 (ID 수집 -> 가격 정보 수집)

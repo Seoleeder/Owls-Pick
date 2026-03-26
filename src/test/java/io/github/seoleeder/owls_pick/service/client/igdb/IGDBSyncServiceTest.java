@@ -57,7 +57,7 @@ class IGDBSyncServiceTest {
 
         // API 응답 (Summary) 데이터 생성
         // ExternalApp: {store app id, store id}
-        var externalApp = new IGDBGameSummaryResponse.ExternalApp(100L, 1);
+        var externalApp = new IGDBGameSummaryResponse.ExternalApp("100", 1);
 
         IGDBGameSummaryResponse summary = new IGDBGameSummaryResponse(
                 55L,                // igdbId
@@ -147,7 +147,7 @@ class IGDBSyncServiceTest {
 
         given(gameRepository.findMaxIgdbUpdatedAt()).willReturn(Optional.of(lastUpdate));
 
-        var externalApp = new IGDBGameSummaryResponse.ExternalApp(200L, 1);
+        var externalApp = new IGDBGameSummaryResponse.ExternalApp("200", 1);
         IGDBGameSummaryResponse updatedSummary = new IGDBGameSummaryResponse(
                 77L, List.of(externalApp), Collections.emptyList(), null, null,
                 Collections.emptyList(), "Updated Description",

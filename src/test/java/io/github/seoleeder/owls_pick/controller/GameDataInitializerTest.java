@@ -1,5 +1,6 @@
 package io.github.seoleeder.owls_pick.controller;
 
+import io.github.seoleeder.owls_pick.controller.admin.GameDataInitializer;
 import io.github.seoleeder.owls_pick.global.config.AdminAuthorizationInterceptor;
 import io.github.seoleeder.owls_pick.global.config.WebConfig;
 import io.github.seoleeder.owls_pick.global.config.properties.AdminProperties;

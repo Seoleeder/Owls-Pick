@@ -9,6 +9,7 @@ import io.github.seoleeder.owls_pick.global.config.properties.SteamProperties;
 import io.github.seoleeder.owls_pick.entity.game.Game;
 import io.github.seoleeder.owls_pick.entity.game.ReviewStat;
 import io.github.seoleeder.owls_pick.entity.game.StoreDetail;
+import io.github.seoleeder.owls_pick.repository.GameRepository;
 import io.github.seoleeder.owls_pick.repository.ReviewRepository;
 import io.github.seoleeder.owls_pick.repository.ReviewStatRepository;
 import io.github.seoleeder.owls_pick.repository.StoreDetailRepository;
@@ -43,6 +44,7 @@ class SteamReviewSyncServiceTest {
     @Mock private SteamDataCollector collector;
     @Mock private StoreDetailRepository storeDetailRepository;
     @Mock private ReviewStatRepository reviewStatRepository;
+    @Mock private GameRepository gameRepository;
     @Mock private ReviewRepository reviewRepository;
     @Mock private TransactionTemplate transactionTemplate;
 
@@ -61,6 +63,7 @@ class SteamReviewSyncServiceTest {
         );
 
         CurationProperties curationProps = new CurationProperties(
+                new CurationProperties.Upcoming(10,2),
                 new CurationProperties.Intersection(10),
                 new CurationProperties.HiddenMasterpiece(50, 3000, 8),
                 new CurationProperties.Trending(7, 8),
@@ -72,6 +75,7 @@ class SteamReviewSyncServiceTest {
                 storeDetailRepository,
                 reviewStatRepository,
                 reviewRepository,
+                gameRepository,
                 transactionTemplate,
                 props,
                 curationProps
