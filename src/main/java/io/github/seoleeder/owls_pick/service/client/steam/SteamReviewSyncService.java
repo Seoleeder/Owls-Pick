@@ -11,6 +11,7 @@ import io.github.seoleeder.owls_pick.entity.game.Game;
 import io.github.seoleeder.owls_pick.entity.game.Review;
 import io.github.seoleeder.owls_pick.entity.game.ReviewStat;
 import io.github.seoleeder.owls_pick.entity.game.StoreDetail;
+import io.github.seoleeder.owls_pick.repository.GameRepository;
 import io.github.seoleeder.owls_pick.repository.ReviewRepository;
 import io.github.seoleeder.owls_pick.repository.ReviewStatRepository;
 import io.github.seoleeder.owls_pick.repository.StoreDetailRepository;
@@ -35,6 +36,7 @@ public class SteamReviewSyncService {
     private final StoreDetailRepository storeDetailRepository;
     private final ReviewStatRepository reviewStatRepository;
     private final ReviewRepository reviewRepository;
+    private final GameRepository gameRepository;
 
     private final ExecutorService executorService; // 병렬 처리용 스레드 풀
     private final TransactionTemplate transactionTemplate; // 트랜잭션 수동 제어용
@@ -47,6 +49,7 @@ public class SteamReviewSyncService {
             StoreDetailRepository storeDetailRepository,
             ReviewStatRepository reviewStatRepository,
             ReviewRepository reviewRepository,
+            GameRepository gameRepository,
             TransactionTemplate transactionTemplate,
             SteamProperties steamProps,
             CurationProperties curationProps)
@@ -55,6 +58,7 @@ public class SteamReviewSyncService {
         this.storeDetailRepository = storeDetailRepository;
         this.reviewStatRepository = reviewStatRepository;
         this.reviewRepository = reviewRepository;
+        this.gameRepository = gameRepository;
         this.transactionTemplate = transactionTemplate;
         this.steamProps = steamProps;
         this.curationProps = curationProps;
@@ -133,12 +137,25 @@ public class SteamReviewSyncService {
 
             // TransactionTemplate로 내부 트랜잭션 생성 후 리뷰 데이터 저장
             transactionTemplate.executeWithoutResult(status -> {
-                saveReviewData(detail.getGame(), response);
+                // 현재 트랜잭션의 영속성 컨텍스트에서 관리되는 Game 엔티티(Proxy) 확보
+                Game managedGame = gameRepository.getReferenceById(detail.getGame().getId());
+                saveReviewData(managedGame, response);
             });
 
+            Thread.sleep(800);
+
         } catch (RestClientException e) {
-            // API 오류: 네트워크 문제, 타임아웃 등 -> 경고 로그만 남기고 스킵
-            log.warn("API Failure for Game: {} ({}) - {}", gameTitle, appIdStr, e.getMessage());
+            if (e.getMessage() != null && e.getMessage().contains("420")) {
+                log.error("Steam Rate Limit Hit (420). Backing off for 15 seconds...");
+                try {
+                    Thread.sleep(15000);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                }
+            } else {
+                // API 오류: 네트워크 문제, 타임아웃 등 -> 경고 로그만 남기고 스킵
+                log.warn("API Failure for Game: {} ({}) - {}", gameTitle, appIdStr, e.getMessage());
+            }
 
         } catch (DataAccessException e) {
             // DB 오류: 제약조건 위반, 커넥션 문제 등 -> 에러 로그 남기고 스킵

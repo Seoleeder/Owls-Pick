@@ -73,4 +73,10 @@ public interface GameRepositoryCustom {
 
     //  게임의 핵심 정보와 1:1 연관 데이터 조회
     Optional<GameDetailCoreDto> findGameDetailCoreById(Long gameId);
+
+
+    // --- 게임 데이터 번역 ---
+
+    // 한글화가 필요한 게임을 지정된 limit만큼 조회
+    List<Game> findUnlocalizedGames(int limit);
 }

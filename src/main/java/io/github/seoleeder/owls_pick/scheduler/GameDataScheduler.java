@@ -1,5 +1,7 @@
 package io.github.seoleeder.owls_pick.scheduler;
 
+import io.github.seoleeder.owls_pick.service.localization.KeywordLocalizationService;
+import io.github.seoleeder.owls_pick.service.localization.LocalizationService;
 import io.github.seoleeder.owls_pick.service.client.igdb.IGDBSyncService;
 import io.github.seoleeder.owls_pick.service.client.itad.ITADSyncService;
 import io.github.seoleeder.owls_pick.service.client.steam.SteamAppSyncService;
@@ -10,6 +12,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import java.util.concurrent.CompletableFuture;
+
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -19,6 +23,8 @@ public class GameDataScheduler {
     private final SteamReviewSyncService steamReviewService;
     private final IGDBSyncService igdbService;
     private final ITADSyncService itadService;
+    private final LocalizationService localizationService;
+    private final KeywordLocalizationService keywordLocalizationService;
 
     @Scheduled(cron = "0 0 0 * * *")
     public void scheduleDailyFullSync(){
@@ -39,9 +45,44 @@ public class GameDataScheduler {
 
             log.info("[Scheduler] Daily Full Sync Finished!");
 
+            // 한글화 파이프라인 실행
+            triggerAsyncLocalizationPipeline();
+
         } catch (Exception e) {
             log.error("[Scheduler] Daily Full Sync Failed", e);
         }
+    }
+
+    /**
+     * 일일 데이터 수집 직후 구동되는 비동기 한글화 파이프라인
+     */
+    private void triggerAsyncLocalizationPipeline() {
+        // 별도의 비동기 스레드에서 실행
+        CompletableFuture.runAsync(() -> {
+            log.info("[Scheduler] Starting Daily Async Localization Pipeline...");
+
+            // 게임 설명 및 스토리라인 파이프라인 가동
+            try {
+                localizationService.runPipeline();
+            } catch (Exception e) {
+                // 게임 설명 한글화가 실패하더라도 키워드 한글화는 시도할 수 있도록 독립된 try-catch 적용
+                log.error("[Scheduler] Daily Game Description Localization Pipeline Failed", e);
+            }
+
+            // 키워드 한글화 파이프라인 가동
+            log.info("[Scheduler] Starting Daily Keyword Localization Pipeline...");
+            try {
+                keywordLocalizationService.runPipeline();
+            } catch (Exception e) {
+                log.error("[Scheduler] Daily Keyword Localization Pipeline Failed", e);
+            }
+
+            log.info("[Scheduler] All Daily Localization Pipelines Finished.");
+
+        }).exceptionally(ex -> {
+            log.error("[Scheduler] Daily Localization Pipeline Failed: {}", ex.getMessage());
+            return null;
+        });
     }
 
     @Scheduled(cron = "0 0 0,6,12,18 * * *")

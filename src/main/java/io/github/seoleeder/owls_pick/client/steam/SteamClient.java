@@ -73,7 +73,7 @@ public class SteamClient{
                         .queryParam("filter", "recent")    // 최신순으로 정렬
                         .queryParam("purchase_type", "all")   // 모든 리뷰 통계 데이터 수집
                         .queryParam("num_per_page", 20)   // 최소 리소스 사용
-                        .build())
+                        .build(appId))
                 .retrieve()
                 .body(SteamReviewStatsResponse.class);
     }
@@ -96,7 +96,7 @@ public class SteamClient{
                         .queryParam("review_type", reviewType) // positive 또는 negative
                         .queryParam("cursor", cursor)
                         .queryParam("num_per_page", 100)   // 처리 속도 극대화
-                        .build())
+                        .build(appId))
                 .retrieve()
                 .body(SteamReviewDetailResponse.class);
     }

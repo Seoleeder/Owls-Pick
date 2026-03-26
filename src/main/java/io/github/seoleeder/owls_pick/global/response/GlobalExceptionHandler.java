@@ -42,7 +42,7 @@ public class GlobalExceptionHandler {
         String errorMessage = e.getBindingResult().getFieldErrors().stream()
                 .findFirst()
                 .map(FieldError::getDefaultMessage)
-                .orElse("입력값이 올바르지 않습니다.");
+                .orElse("Invalid input value");
 
         log.error("handleValidationException() in GlobalExceptionHandler : {}", errorMessage);
 

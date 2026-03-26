@@ -2,6 +2,8 @@ package io.github.seoleeder.owls_pick.service;
 
 import io.github.seoleeder.owls_pick.dto.response.GameDetailResponse;
 import io.github.seoleeder.owls_pick.entity.game.*;
+import io.github.seoleeder.owls_pick.entity.game.enums.GameModeType;
+import io.github.seoleeder.owls_pick.entity.game.enums.PerspectiveType;
 import io.github.seoleeder.owls_pick.global.response.CustomException;
 import io.github.seoleeder.owls_pick.global.response.ErrorCode;
 import io.github.seoleeder.owls_pick.repository.*;
@@ -13,7 +15,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
 
 /**
@@ -87,15 +88,17 @@ public class GameDetailService {
                 .gameId(game.getId())
                 .title(game.getTitle())
                 .titleLocalization(game.getTitleLocalization())
-                .description(game.getDescription())
-                .storyline(game.getStoryline())
+                .description(game.getDescriptionKo())
+                .storyline(game.getStorylineKo())
                 .firstRelease(game.getFirstRelease())
                 .coverId(game.getCoverId())
                 .ratingKr(game.getRatingKr())
                 .ratingEsrb(game.getRatingEsrb())
                 .isAdult(game.getIsAdult())
-                .mode(toListSafe(game.getMode()))
-                .perspective(toListSafe(game.getPerspective()))
+                .mode(game.getMode() == null ? Collections.emptyList() :
+                        game.getMode().stream().map(GameModeType::getKorName).toList())
+                .perspective(game.getPerspective() == null ? Collections.emptyList() :
+                        game.getPerspective().stream().map(PerspectiveType::getKorName).toList())
                 .reviewSummary(review != null ? review.getReviewSummary() : null)
                 .hypes(game.getHypes())
 
@@ -135,27 +138,27 @@ public class GameDetailService {
                         .discountPrice(s.getDiscountPrice())
                         .discountRate(s.getDiscountRate())
                         .expiryDate(s.getExpiryDate())
-                        .build()).collect(Collectors.toList()))
+                        .build()).toList())
 
                 .languages(languageSupports.stream().map(l -> GameDetailResponse.LanguageSupportInfo.builder()
                         .language(l.getLanguage())
                         .voiceSupport(l.getVoiceSupport())
                         .subtitle(l.getSubtitle())
                         .interfaceSupport(l.getInterSupport())
-                        .build()).collect(Collectors.toList()))
+                        .build()).toList())
 
                 .companies(gameCompanies.stream().map(gc -> GameDetailResponse.CompanyInfo.builder()
                         .name(gc.getCompany().getName())
                         .logo(gc.getCompany().getLogo())
                         .isDeveloper(gc.isDeveloper())
                         .isPublisher(gc.isPublisher())
-                        .build()).collect(Collectors.toList()))
+                        .build()).toList())
 
                 .screenshots(screenshots.stream().map(s -> GameDetailResponse.ScreenshotInfo.builder()
                         .imageId(s.getImageId())
                         .width(s.getWidth())
                         .height(s.getHeight())
-                        .build()).collect(Collectors.toList()))
+                        .build()).toList())
 
                 .build();
     }

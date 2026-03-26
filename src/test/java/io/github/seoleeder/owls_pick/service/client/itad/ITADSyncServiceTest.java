@@ -23,6 +23,7 @@ import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -101,7 +102,7 @@ class ITADSyncServiceTest {
                 new OriginalPrice(2000),         // originalPrice
                 new StoreLow(500),               // storelow
                 50,                              // cut
-                LocalDateTime.now().plusDays(1), // expiry
+                OffsetDateTime.now().plusDays(1), // expiry
                 "http://steam.com"               // url
         );
         ITADPriceResponse priceRes = new ITADPriceResponse("ITAD_1", List.of(deal));
@@ -150,7 +151,7 @@ class ITADSyncServiceTest {
                 new OriginalPrice(1000),         // Original Price
                 null,                            // StoreLow (null)
                 0,                               // Cut (0%)
-                LocalDateTime.now().plusDays(1), // Expiry (할인 없어서 무시)
+                OffsetDateTime.now().plusDays(1), // Expiry (할인 없어서 무시)
                 "http://steam.com"               // URL
         );
         ITADPriceResponse priceRes = new ITADPriceResponse("ITAD_1", List.of(deal));

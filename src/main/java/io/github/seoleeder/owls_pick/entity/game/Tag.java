@@ -41,6 +41,11 @@ public class Tag {
     @Column(columnDefinition = "text[]")
     private List<String> keywords = new ArrayList<>();
 
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    @Builder.Default
+    @Column(columnDefinition = "text[]")
+    private List<String> keywordsKo = new ArrayList<>();
+
     /**
      * 단일 게임의 태그 목록(테마, 키워드)에 성인(19금) 요소가 포함되어 있는지 판별
      */
@@ -69,6 +74,13 @@ public class Tag {
 
         // 장르는 성인용이 없으므로 검사 생략
         return false;
+    }
+
+    /**
+     * 한글화된 키워드 배열 업데이트
+     */
+    public void updateKeywordsKo(List<String> translatedKeywords) {
+        this.keywordsKo = translatedKeywords;
     }
 
 }
