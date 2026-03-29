@@ -6,6 +6,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public record ItadProperties(
         String key,
         String baseUrl,
-        int batchSize
+        int batchSize,
+        int syncThreadPoolSize
 ) {
 }

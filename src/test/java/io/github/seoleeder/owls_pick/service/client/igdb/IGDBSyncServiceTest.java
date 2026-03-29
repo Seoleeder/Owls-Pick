@@ -1,8 +1,8 @@
 package io.github.seoleeder.owls_pick.service.client.igdb;
 
-import io.github.seoleeder.owls_pick.client.igdb.IGDBDataCollector;
-import io.github.seoleeder.owls_pick.client.igdb.dto.IGDBGameDetailResponse;
-import io.github.seoleeder.owls_pick.client.igdb.dto.IGDBGameSummaryResponse;
+import io.github.seoleeder.owls_pick.client.igdb.IgdbDataCollector;
+import io.github.seoleeder.owls_pick.client.igdb.dto.IgdbGameDetailResponse;
+import io.github.seoleeder.owls_pick.client.igdb.dto.IgdbGameSummaryResponse;
 import io.github.seoleeder.owls_pick.global.util.TimestampUtils;
 import io.github.seoleeder.owls_pick.entity.game.Game;
 import io.github.seoleeder.owls_pick.entity.game.StoreDetail;
@@ -38,7 +38,7 @@ class IGDBSyncServiceTest {
     @InjectMocks
     private IGDBSyncService igdbSyncService;
 
-    @Mock private IGDBDataCollector collector;
+    @Mock private IgdbDataCollector collector;
     @Mock private GameRepository gameRepository;
     @Mock private StoreDetailRepository storeDetailRepository;
     @Mock private TagRepository tagRepository;
@@ -57,9 +57,9 @@ class IGDBSyncServiceTest {
 
         // API 응답 (Summary) 데이터 생성
         // ExternalApp: {store app id, store id}
-        var externalApp = new IGDBGameSummaryResponse.ExternalApp("100", 1);
+        var externalApp = new IgdbGameSummaryResponse.ExternalApp("100", 1);
 
-        IGDBGameSummaryResponse summary = new IGDBGameSummaryResponse(
+        IgdbGameSummaryResponse summary = new IgdbGameSummaryResponse(
                 55L,                // igdbId
                 List.of(externalApp), // externalApps
                 null,               // titleLocalization
@@ -107,8 +107,8 @@ class IGDBSyncServiceTest {
         given(gameRepository.saveAll(anyList())).willReturn(List.of(existingGame));
 
         // API 응답 (Detail) 생성
-        var genre = new IGDBGameDetailResponse.Genre(1L, "RPG");
-        IGDBGameDetailResponse detailRes = new IGDBGameDetailResponse(
+        var genre = new IgdbGameDetailResponse.Genre(1L, "RPG");
+        IgdbGameDetailResponse detailRes = new IgdbGameDetailResponse(
                 55L,                // igdbId (매칭용)
                 null,               // externalApps
                 List.of(genre),     // genres (검증 대상)
@@ -147,8 +147,8 @@ class IGDBSyncServiceTest {
 
         given(gameRepository.findMaxIgdbUpdatedAt()).willReturn(Optional.of(lastUpdate));
 
-        var externalApp = new IGDBGameSummaryResponse.ExternalApp("200", 1);
-        IGDBGameSummaryResponse updatedSummary = new IGDBGameSummaryResponse(
+        var externalApp = new IgdbGameSummaryResponse.ExternalApp("200", 1);
+        IgdbGameSummaryResponse updatedSummary = new IgdbGameSummaryResponse(
                 77L, List.of(externalApp), Collections.emptyList(), null, null,
                 Collections.emptyList(), "Updated Description",
                 null, 1704153600L, newUpdateEpoch,

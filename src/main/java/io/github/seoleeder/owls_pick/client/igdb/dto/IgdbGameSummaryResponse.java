@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.List;
 
-public record IGDBGameSummaryResponse(
+public record IgdbGameSummaryResponse(
         @JsonProperty("id") Long igdbId,
         @JsonProperty("external_games") List <ExternalApp> externalApps,
         @JsonProperty("game_localizations") List<TitleLocalization> titleLocalization,

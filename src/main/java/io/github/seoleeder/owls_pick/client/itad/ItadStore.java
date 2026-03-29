@@ -7,7 +7,7 @@ import java.util.stream.Collectors;
 import io.github.seoleeder.owls_pick.entity.game.StoreDetail.StoreName;
 
 @Getter
-public enum ITADStore {
+public enum ItadStore {
     BLIZZARD("Blizzard", 4, StoreName.BLIZZARD),
 
     FANATICAL("Fanatical", 6, StoreName.FANATICAL), // Fanatical ID는 보통 15입니다
@@ -34,20 +34,20 @@ public enum ITADStore {
     private final StoreName storeName;
 
     // 지원할 스토어 ID를 쉼표로 연결 (API 요청용)
-    public static final String ALL_STORE_IDS = Arrays.stream(ITADStore.values())
+    public static final String ALL_STORE_IDS = Arrays.stream(ItadStore.values())
             .filter(store -> store.getStoreName() != null)
             .map(store -> String.valueOf(store.getItadId()))
             .collect(Collectors.joining(","));
 
-    ITADStore(String itadName, int itadId, StoreName storeName) {
+    ItadStore(String itadName, int itadId, StoreName storeName) {
         this.itadName = itadName;
         this.itadId = itadId;
         this.storeName = storeName;
     }
 
     // ID로 ITADStore 찾기
-    public static ITADStore fromId(int itadId) {
-        for (ITADStore store : values()) {
+    public static ItadStore fromId(int itadId) {
+        for (ItadStore store : values()) {
             if (store.itadId == itadId) return store;
         }
         return null;

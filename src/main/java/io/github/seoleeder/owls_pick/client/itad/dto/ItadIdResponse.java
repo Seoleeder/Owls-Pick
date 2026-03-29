@@ -1,6 +1,6 @@
 package io.github.seoleeder.owls_pick.client.itad.dto;
 
-public record ITADIdResponse(
+public record ItadIdResponse(
         boolean found,
         Game game
 ) {

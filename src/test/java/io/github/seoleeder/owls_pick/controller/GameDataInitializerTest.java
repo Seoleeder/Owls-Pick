@@ -5,7 +5,7 @@ import io.github.seoleeder.owls_pick.global.config.AdminAuthorizationInterceptor
 import io.github.seoleeder.owls_pick.global.config.WebConfig;
 import io.github.seoleeder.owls_pick.global.config.properties.AdminProperties;
 import io.github.seoleeder.owls_pick.service.client.igdb.IGDBSyncService;
-import io.github.seoleeder.owls_pick.service.client.itad.ITADSyncService;
+import io.github.seoleeder.owls_pick.service.client.itad.ItadSyncService;
 import io.github.seoleeder.owls_pick.service.client.steam.SteamAppSyncService;
 import io.github.seoleeder.owls_pick.service.client.steam.SteamDashboardSyncService;
 import io.github.seoleeder.owls_pick.service.client.steam.SteamReviewSyncService;
@@ -39,7 +39,7 @@ class GameDataInitializerTest {
     @MockitoBean private SteamDashboardSyncService steamDashboardService;
     @MockitoBean private SteamReviewSyncService steamReviewService;
     @MockitoBean private IGDBSyncService igdbService;
-    @MockitoBean private ITADSyncService itadService;
+    @MockitoBean private ItadSyncService itadService;
 
     private final String ADMIN_KEY = "valid-key";
 

@@ -1,8 +1,8 @@
 package io.github.seoleeder.owls_pick.service.client.igdb;
 
-import io.github.seoleeder.owls_pick.client.igdb.IGDBDataCollector;
-import io.github.seoleeder.owls_pick.client.igdb.dto.IGDBGameDetailResponse;
-import io.github.seoleeder.owls_pick.client.igdb.dto.IGDBGameSummaryResponse;
+import io.github.seoleeder.owls_pick.client.igdb.IgdbDataCollector;
+import io.github.seoleeder.owls_pick.client.igdb.dto.IgdbGameDetailResponse;
+import io.github.seoleeder.owls_pick.client.igdb.dto.IgdbGameSummaryResponse;
 import io.github.seoleeder.owls_pick.entity.game.enums.GameModeType;
 import io.github.seoleeder.owls_pick.entity.game.enums.PerspectiveType;
 import io.github.seoleeder.owls_pick.global.util.TimestampUtils;
@@ -23,8 +23,8 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class IGDBSyncService {
-    private final IGDBDataCollector collector;
+public class IgdbSyncService {
+    private final IgdbDataCollector collector;
 
     // Repositories
     private final GameRepository gameRepository;
@@ -57,7 +57,7 @@ public class IGDBSyncService {
         while (true) {
             try {
                 // Collector 호출 (ID 기준 수집)
-                List<IGDBGameSummaryResponse> summaries = collector.collectGameSummary(lastId);
+                List<IgdbGameSummaryResponse> summaries = collector.collectGameSummary(lastId);
 
                 if (summaries.isEmpty()) {
                     log.info("Backfill Completed! Last processed ID: {}", lastId);
@@ -100,7 +100,7 @@ public class IGDBSyncService {
         while (true) {
             try {
                 // Collector 호출 (Timestamp 기준 수집 - 신규 및 수정 감지)
-                List<IGDBGameSummaryResponse> summaries = collector.collectUpdatedGameSummary(lastTimestamp);
+                List<IgdbGameSummaryResponse> summaries = collector.collectUpdatedGameSummary(lastTimestamp);
 
                 if (summaries.isEmpty()) {
                     log.info("No more updates found.");
@@ -131,7 +131,7 @@ public class IGDBSyncService {
      * 500개 단위의 게임 주요 데이터를 저장하고, 상세 정보(Company, Language Support, Screenshot, Tag)까지 저장
      */
 
-    protected void processBatch(List<IGDBGameSummaryResponse> summaries) {
+    protected void processBatch(List<IgdbGameSummaryResponse> summaries) {
         // Step 1: Summary 저장 (Game 테이블 + StoreDetail 연결)
         List<Game> savedGames;
         try {
@@ -150,7 +150,7 @@ public class IGDBSyncService {
         List<Long> igdbIds = savedGames.stream().map(Game::getIgdbId).toList();
 
         // Step 3: 상세 정보 API 호출 (Collector 내부에서 Batch 처리됨)
-        List<IGDBGameDetailResponse> details;
+        List<IgdbGameDetailResponse> details;
         try {
             details = collector.collectGameDetail(igdbIds);
 
@@ -167,7 +167,7 @@ public class IGDBSyncService {
         // Step 4: 연관 테이블 저장 (Tag, Screenshot, Company, Language)
         try {
             List<Game> finalSavedGames = savedGames;
-            List<IGDBGameDetailResponse> finalDetails = details;
+            List<IgdbGameDetailResponse> finalDetails = details;
 
             transactionTemplate.executeWithoutResult(status ->
                     syncDetails(finalSavedGames, finalDetails)
@@ -183,12 +183,12 @@ public class IGDBSyncService {
      * 게임 주요 데이터 저장 & 업데이트
      * 세부 구현: Summary -> StoreDetail 조회 (Steam ID와 IGDB ID 매핑) -> Game 엔티티 업데이트
      * */
-    private List<Game> upsertGamesSummaries(List<IGDBGameSummaryResponse> summaries) {
+    private List<Game> upsertGamesSummaries(List<IgdbGameSummaryResponse> summaries) {
         // IGDB 응답에서 Steam AppID 추출 및 맵핑 (Key: SteamAppID, Value: DTO)
-        Map<String, IGDBGameSummaryResponse> steamIdToDtoMap = new HashMap<>();
+        Map<String, IgdbGameSummaryResponse> steamIdToDtoMap = new HashMap<>();
         List<String> steamAppIds = new ArrayList<>();
 
-        for (IGDBGameSummaryResponse dto : summaries) {
+        for (IgdbGameSummaryResponse dto : summaries) {
             String steamId = extractSteamId(dto);
             if (steamId != null) {
                 steamAppIds.add(steamId);
@@ -209,7 +209,7 @@ public class IGDBSyncService {
         // Game 엔티티 업데이트
         for (StoreDetail detail : existingDetails) {
             String steamId = detail.getStoreAppId();
-            IGDBGameSummaryResponse dto = steamIdToDtoMap.get(steamId);
+            IgdbGameSummaryResponse dto = steamIdToDtoMap.get(steamId);
 
             if (dto != null) {
                 Game game = detail.getGame(); // 기존 게임 엔티티
@@ -233,14 +233,14 @@ public class IGDBSyncService {
                 String statusName = (dto.gameStatus() != null) ? dto.gameStatus().status() : null;
 
                 // 리스트에서 DB에 저장될 '이름' 데이터만 추출
-                List<String> platforms = extractValues(dto.platforms(), IGDBGameSummaryResponse.Platform::name);
-                List<GameModeType> modes = extractValues(dto.modes(), IGDBGameSummaryResponse.GameMode::name)
+                List<String> platforms = extractValues(dto.platforms(), IgdbGameSummaryResponse.Platform::name);
+                List<GameModeType> modes = extractValues(dto.modes(), IgdbGameSummaryResponse.GameMode::name)
                         .stream()
                         .map(GameModeType::fromEngName)
                         .distinct()
                         .toList();
 
-                List<PerspectiveType> perspectives = extractValues(dto.perspectives(), IGDBGameSummaryResponse.Perspective::name)
+                List<PerspectiveType> perspectives = extractValues(dto.perspectives(), IgdbGameSummaryResponse.Perspective::name)
                         .stream()
                         .map(PerspectiveType::fromEngName)
                         .distinct()
@@ -274,11 +274,11 @@ public class IGDBSyncService {
      * 게임 상세 데이터 저장 & 업데이트
      * Tag, Screenshot, Language Support, Company
      * */
-    private void syncDetails(List<Game> games, List<IGDBGameDetailResponse> details) {
+    private void syncDetails(List<Game> games, List<IgdbGameDetailResponse> details) {
 
         //igdbId를 추출해서 detail 응답과 매핑
-        Map<Long, IGDBGameDetailResponse> detailMap = details.stream()
-                .collect(Collectors.toMap(IGDBGameDetailResponse::igdbId, Function.identity()));
+        Map<Long, IgdbGameDetailResponse> detailMap = details.stream()
+                .collect(Collectors.toMap(IgdbGameDetailResponse::igdbId, Function.identity()));
 
         // 배치 저장을 위한 리스트
         List<Tag> tags = new ArrayList<>();
@@ -290,12 +290,12 @@ public class IGDBSyncService {
 
         // 이번 배치에 등장하는 모든 회사 이름 수집 (중복 제거)
         Set<String> companyNames = new HashSet<>();
-        for (IGDBGameDetailResponse dto : details) {
+        for (IgdbGameDetailResponse dto : details) {
             if (dto.companies() != null) {
                 dto.companies().stream()
-                        .map(IGDBGameDetailResponse.Company::companyDetail)
+                        .map(IgdbGameDetailResponse.Company::companyDetail)
                         .filter(Objects::nonNull)
-                        .map(IGDBGameDetailResponse.Company.CompanyDetail::name) // 이름 추출
+                        .map(IgdbGameDetailResponse.Company.CompanyDetail::name) // 이름 추출
                         .filter(name -> name != null && !name.isBlank())
                         .forEach(companyNames::add);
             }
@@ -328,7 +328,7 @@ public class IGDBSyncService {
 
         // 게임별 상세 데이터 매핑
         for (Game game : games) {
-            IGDBGameDetailResponse dto = detailMap.get(game.getIgdbId());
+            IgdbGameDetailResponse dto = detailMap.get(game.getIgdbId());
             if (dto == null) continue;
 
             // gameProxy (영속성 컨텍스트가 관리하는 가짜 객체) 생성
@@ -339,9 +339,9 @@ public class IGDBSyncService {
             // 장르, 테마, 키워드 데이터 추출 후 저장
             Tag tag = Tag.builder()
                     .game(gameProxy)
-                    .genres(extractValues(dto.genres(), IGDBGameDetailResponse.Genre::name))
-                    .themes(extractValues(dto.themes(), IGDBGameDetailResponse.Theme::name))
-                    .keywords(extractValues(dto.keywords(), IGDBGameDetailResponse.Keyword::name))
+                    .genres(extractValues(dto.genres(), IgdbGameDetailResponse.Genre::name))
+                    .themes(extractValues(dto.themes(), IgdbGameDetailResponse.Theme::name))
+                    .keywords(extractValues(dto.keywords(), IgdbGameDetailResponse.Keyword::name))
                     .build();
             tags.add(tag);
 
@@ -462,11 +462,11 @@ public class IGDBSyncService {
      * 1. storeAppID 필터링 (steam = 1)
      * 2. String 변환
      * */
-    private String extractSteamId(IGDBGameSummaryResponse dto) {
+    private String extractSteamId(IgdbGameSummaryResponse dto) {
         if (dto.externalApps() == null) return null;
         return dto.externalApps().stream()
                 .filter(ext -> ext.storeId() == 1) // Steam Category
-                .map(IGDBGameSummaryResponse.ExternalApp::storeAppid) // steam app id 추출
+                .map(IgdbGameSummaryResponse.ExternalApp::storeAppid) // steam app id 추출
                 .filter(storeAppId -> storeAppId != null && !storeAppId.isBlank())   // 빈 문자열 제외
                 .findFirst()
                 .orElse(null);
@@ -476,11 +476,11 @@ public class IGDBSyncService {
      * 한글화 타이틀 데이터 추출
      * KR : 2
      * */
-    private String extractLocalization(IGDBGameSummaryResponse dto) {
+    private String extractLocalization(IgdbGameSummaryResponse dto) {
         if (dto.titleLocalization() == null || dto.titleLocalization().isEmpty()) return null;
         return dto.titleLocalization().stream()
                 .filter(loc -> loc.region() != null && loc.region().id() == 2L) // Korea = 2
-                .map(IGDBGameSummaryResponse.TitleLocalization::name)
+                .map(IgdbGameSummaryResponse.TitleLocalization::name)
                 .filter(name -> name != null && !name.isBlank())
                 .findFirst()
                 .orElse(null);
@@ -494,13 +494,13 @@ public class IGDBSyncService {
     /**
      * 국내(GRAC), 글로벌(ESRB) 심의 정보 추출
      * */
-    private Ratings extractAgeRatings(List<IGDBGameSummaryResponse.AgeRating> ageRatings) {
+    private Ratings extractAgeRatings(List<IgdbGameSummaryResponse.AgeRating> ageRatings) {
         if (ageRatings == null || ageRatings.isEmpty()) return new Ratings(null, null);
 
         String esrb = null;
         String kr = null;
 
-        for (IGDBGameSummaryResponse.AgeRating rating : ageRatings) {
+        for (IgdbGameSummaryResponse.AgeRating rating : ageRatings) {
             if (rating.organization() == null || rating.ratingCategories() == null) {
                 continue;
             }

@@ -4,33 +4,33 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public class IGDBQueryBuilder {
+public class IgdbQueryBuilder {
 
     private final List<String> fieldList = new ArrayList<>(); // 리스트로 관리
     private final List<String> whereClauses = new ArrayList<>();
     private Integer limit;
     private String sort;
 
-    public static IGDBQueryBuilder create() {
-        return new IGDBQueryBuilder();
+    public static IgdbQueryBuilder create() {
+        return new IgdbQueryBuilder();
     }
 
-    public IGDBQueryBuilder fields(String... fields) {
+    public IgdbQueryBuilder fields(String... fields) {
         this.fieldList.addAll(Arrays.asList(fields));
         return this;
     }
 
-    public IGDBQueryBuilder where(String clause) {
+    public IgdbQueryBuilder where(String clause) {
         this.whereClauses.add(clause);
         return this;
     }
 
-    public IGDBQueryBuilder limit(int limit) {
+    public IgdbQueryBuilder limit(int limit) {
         this.limit = limit;
         return this;
     }
 
-    public IGDBQueryBuilder sort(String sortClause) {
+    public IgdbQueryBuilder sort(String sortClause) {
         this.sort = sortClause;
         return this;
     }

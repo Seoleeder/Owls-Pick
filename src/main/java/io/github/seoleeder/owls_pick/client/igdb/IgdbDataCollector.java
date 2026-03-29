@@ -1,7 +1,7 @@
 package io.github.seoleeder.owls_pick.client.igdb;
 
-import io.github.seoleeder.owls_pick.client.igdb.dto.IGDBGameDetailResponse;
-import io.github.seoleeder.owls_pick.client.igdb.dto.IGDBGameSummaryResponse;
+import io.github.seoleeder.owls_pick.client.igdb.dto.IgdbGameDetailResponse;
+import io.github.seoleeder.owls_pick.client.igdb.dto.IgdbGameSummaryResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -12,9 +12,9 @@ import java.util.List;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class IGDBDataCollector {
+public class IgdbDataCollector {
 
-    private final IGDBClient igdbClient;
+    private final IgdbClient igdbClient;
 
     private static final Integer IGDB_LIMIT = 500;
 
@@ -22,14 +22,14 @@ public class IGDBDataCollector {
      * 초기 대량 데이터 수집
      * 조건에 맞는 게임 주요 데이터 수집 (Pagination)
      */
-    public List<IGDBGameSummaryResponse> collectGameSummary(Long lastId) {
+    public List<IgdbGameSummaryResponse> collectGameSummary(Long lastId) {
         return igdbClient.getGameSummaryList(lastId, IGDB_LIMIT);
     }
 
     /**
      * 수정 시간 기준 새로 업데이트된 데이터 수집
      * */
-    public List<IGDBGameSummaryResponse> collectUpdatedGameSummary(Long lastTimestamp) {
+    public List<IgdbGameSummaryResponse> collectUpdatedGameSummary(Long lastTimestamp) {
         return igdbClient.getUpdatedGameSummaryList(lastTimestamp, IGDB_LIMIT);
     }
 
@@ -38,19 +38,19 @@ public class IGDBDataCollector {
      * IGDB가 제안하는 Limit에 맞게 단일 요청 500으로 제한
      * 초과 요청할 시 500씩 끊어서 요청
      */
-    public List<IGDBGameDetailResponse> collectGameDetail(List<Long> gameIds) {
+    public List<IgdbGameDetailResponse> collectGameDetail(List<Long> gameIds) {
         if (gameIds == null || gameIds.isEmpty()) {
             return List.of();
         }
 
-        List<IGDBGameDetailResponse> totalResults = new ArrayList<>();
+        List<IgdbGameDetailResponse> totalResults = new ArrayList<>();
 
         for (int i = 0; i < gameIds.size(); i += IGDB_LIMIT) {
             int end = Math.min(i + IGDB_LIMIT, gameIds.size());
             List<Long> batchIds = gameIds.subList(i, end);
 
             try {
-                List<IGDBGameDetailResponse> batchResponse = igdbClient.getGameDetailList(batchIds, IGDB_LIMIT);
+                List<IgdbGameDetailResponse> batchResponse = igdbClient.getGameDetailList(batchIds, IGDB_LIMIT);
                 if (batchResponse != null) {
                     totalResults.addAll(batchResponse);
                 }

@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Slf4j
 @Service
@@ -38,7 +39,7 @@ public class SteamReviewSyncService {
     private final ReviewRepository reviewRepository;
     private final GameRepository gameRepository;
 
-    private final ExecutorService executorService; // 병렬 처리용 스레드 풀
+    private final ExecutorService executorService; // 병렬 처리용 가상 스레드 엔진
     private final TransactionTemplate transactionTemplate; // 트랜잭션 수동 제어용
 
     private final SteamProperties steamProps;
@@ -63,7 +64,7 @@ public class SteamReviewSyncService {
         this.steamProps = steamProps;
         this.curationProps = curationProps;
 
-        this.executorService = Executors.newFixedThreadPool(steamProps.sync().threadPoolSize());
+        this.executorService = Executors.newVirtualThreadPerTaskExecutor();
     }
 
     /**
@@ -115,7 +116,6 @@ public class SteamReviewSyncService {
             totalProcessed += targetGames.size();
             log.info("Bulk Progress: {} games processed...", totalProcessed);
 
-            try { Thread.sleep(500); } catch (InterruptedException e) {}
         }
     }
 
@@ -123,7 +123,7 @@ public class SteamReviewSyncService {
      * 특정 게임에 대한 리뷰 수집 -> 내부의 독립적인 트랜잭션에서 저장
      * @param detail 리뷰 작업을 수행할 스팀 ID를 담은 스토어 상세 정보 객체
      * */
-    private void processGameReviewSyncSafe(StoreDetail detail){
+    private int processGameReviewSyncSafe(StoreDetail detail){
         String gameTitle = detail.getGame().getTitle();
         String appIdStr = detail.getStoreAppId();
 
@@ -133,29 +133,16 @@ public class SteamReviewSyncService {
             // 게임의 리뷰 통계와 최소 유용함 수가 일정 수치 이상인 리뷰들 수집
             SteamReviewResponse response = collector.collectRefinedReviews(appId, steamProps.review().minVotesUp());
 
-            if (response == null) return;
+            if (response == null) return 0;
 
             // TransactionTemplate로 내부 트랜잭션 생성 후 리뷰 데이터 저장
-            transactionTemplate.executeWithoutResult(status -> {
+            Integer savedCount = transactionTemplate.execute(status -> {
                 // 현재 트랜잭션의 영속성 컨텍스트에서 관리되는 Game 엔티티(Proxy) 확보
                 Game managedGame = gameRepository.getReferenceById(detail.getGame().getId());
-                saveReviewData(managedGame, response);
+                return saveReviewData(managedGame, response);
             });
 
-            Thread.sleep(800);
-
-        } catch (RestClientException e) {
-            if (e.getMessage() != null && e.getMessage().contains("420")) {
-                log.error("Steam Rate Limit Hit (420). Backing off for 15 seconds...");
-                try {
-                    Thread.sleep(15000);
-                } catch (InterruptedException ie) {
-                    Thread.currentThread().interrupt();
-                }
-            } else {
-                // API 오류: 네트워크 문제, 타임아웃 등 -> 경고 로그만 남기고 스킵
-                log.warn("API Failure for Game: {} ({}) - {}", gameTitle, appIdStr, e.getMessage());
-            }
+            return savedCount != null ? savedCount : 0;
 
         } catch (DataAccessException e) {
             // DB 오류: 제약조건 위반, 커넥션 문제 등 -> 에러 로그 남기고 스킵
@@ -165,6 +152,8 @@ public class SteamReviewSyncService {
             // 예상치 못한 오류
             log.error("Unexpected Error for Game: {} ({})", gameTitle, appIdStr, e);
         }
+
+        return 0;
     }
 
     /**
@@ -172,13 +161,15 @@ public class SteamReviewSyncService {
      * @param game 리뷰 데이터를 저장할 게임
      * @param response 해당 게임에 대한 리뷰 데이터
      */
-    private void saveReviewData(Game game, SteamReviewResponse response) {
+    private int saveReviewData(Game game, SteamReviewResponse response) {
         // 리뷰 통계 저장
         saveReviewStat(game, response.stats());
 
+        int savedReviewCount = 0;
+
         // 리뷰 상세 정보 저장
         if (!response.reviews().isEmpty()) {
-            saveReviews(game, response.reviews());
+            savedReviewCount = saveReviews(game, response.reviews());
         }
 
         // 현재 시각 기준으로 일주일 전 시각 계산
@@ -187,6 +178,8 @@ public class SteamReviewSyncService {
 
         // 주간 리뷰 수 갱신
         reviewStatRepository.updateWeeklyReviewCount(game.getId(), startTime);
+
+        return savedReviewCount;
     }
 
     /** 스팀 리뷰 통계 데이터 저장 메서드
@@ -225,7 +218,7 @@ public class SteamReviewSyncService {
      * @param game 리뷰 상세 데이터를 저장할 게임
      * @param reviews 해당 게임에 대한 리뷰 상세 데이터
      * */
-    private void saveReviews(Game game, List<SteamReviewDetail> reviews) {
+    private int saveReviews(Game game, List<SteamReviewDetail> reviews) {
         List<Review> reviewsToSave = new ArrayList<>();
 
         for (SteamReviewDetail reviewDetail : reviews) {
@@ -252,18 +245,33 @@ public class SteamReviewSyncService {
         if (!reviewsToSave.isEmpty()) {
             reviewRepository.saveAll(reviewsToSave);
         }
+
+        return reviewsToSave.size();
     }
 
     /**
      * 공통 병렬 처리 로직
      */
     private void processBatchAsync(List<StoreDetail> targetGames) {
+        AtomicInteger completedCount = new AtomicInteger(0);
+        AtomicInteger totalSavedReviews = new AtomicInteger(0);
+        int totalTarget = targetGames.size();
+
         // futures : 비동기 작업의 결과물(작업 완료 상태)들을 모아둘 리스트
         // runAsync : 각각의 스팀 ID에 대해서 비동기 작업 수행
         // executoryService : 비동기 작업을 수행할 스레드 풀
         List<CompletableFuture<Void>> futures = targetGames.stream()
                 .map(detail -> CompletableFuture.runAsync(() -> {
-                    processGameReviewSyncSafe(detail);
+                    // 리뷰 수집 및 저장 후, 새로 저장된 리뷰 개수 반환
+                    int savedCount = processGameReviewSyncSafe(detail);
+
+                    // 스레드 안전하게 카운트 증가
+                    int currentCompleted = completedCount.incrementAndGet();
+                    totalSavedReviews.addAndGet(savedCount);
+
+                    // 실시간 진행 상황 로깅
+                    log.info("[Steam Review] Game {}/{} processed. (New reviews saved: {})",
+                            currentCompleted, totalTarget, savedCount);
                 }, executorService))
                 .toList();
 
@@ -272,6 +280,8 @@ public class SteamReviewSyncService {
         // allOf() : 모든 작업이 완료 상태가 될때까지 관리하는 통합 Future를 생성
         // join() : 해당 배치 작업이 전부 완료될 때까지 대기 (Blocking), 예외 발생시 RuntimeException 던짐.
         CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+
+        log.info("Batch Process Completed. Total new reviews saved across all threads: {}", totalSavedReviews.get());
     }
 
     @PreDestroy
