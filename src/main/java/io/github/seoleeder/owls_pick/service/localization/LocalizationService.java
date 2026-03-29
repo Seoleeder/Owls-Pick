@@ -1,7 +1,7 @@
 package io.github.seoleeder.owls_pick.service.localization;
 
 import io.github.seoleeder.owls_pick.dto.request.BulkLocalizationRequest;
-import io.github.seoleeder.owls_pick.dto.response.BulkLocalizationResponse;
+import io.github.seoleeder.owls_pick.dto.response.LocalizationBulkResponse;
 import io.github.seoleeder.owls_pick.entity.game.Game;
 import io.github.seoleeder.owls_pick.global.config.properties.LocalizationProperties;
 import io.github.seoleeder.owls_pick.global.response.CustomException;
@@ -89,7 +89,7 @@ public class LocalizationService {
         BulkLocalizationRequest request = buildRequestDto(targetGames);
 
         // 한글화 엔진 통신
-        BulkLocalizationResponse response = sendToAiEngine(request);
+        LocalizationBulkResponse response = sendToAiEngine(request);
 
         // 결과 DB 반영 (영속성 컨텍스트 더티 체킹)
         Integer result = transactionTemplate.execute(status -> {
@@ -122,12 +122,12 @@ public class LocalizationService {
     /**
      * 한글화 엔진으로 실제 HTTP 요청을 보내고 번역 결과 반환
      */
-    private BulkLocalizationResponse sendToAiEngine(BulkLocalizationRequest request) {
+    private LocalizationBulkResponse sendToAiEngine(BulkLocalizationRequest request) {
         log.info("Sending bulk localization request for {} games to AI Engine...", request.games().size());
 
         String targetUri = localizationProperties.baseUrl() + "/api/localization/bulk";
 
-        BulkLocalizationResponse response;
+        LocalizationBulkResponse response;
 
         try {
             response = localizationRestClient.post()
@@ -135,7 +135,7 @@ public class LocalizationService {
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(request)
                     .retrieve()
-                    .body(BulkLocalizationResponse.class);
+                    .body(LocalizationBulkResponse.class);
         } catch (Exception e) {
             log.error("Failed to communicate with Localization Engine. Error: {}", e.getMessage());
             throw new CustomException(ErrorCode.LOCALIZATION_ENGINE_COMMUNICATION_FAILED);
@@ -152,13 +152,13 @@ public class LocalizationService {
     /**
      * 한글화 엔진으로부터 반환된 결과를 원본 게임 엔티티에 매핑 후 업데이트
      */
-    private int applyLocalizationResults(List<Game> targetGames, BulkLocalizationResponse response) {
+    private int applyLocalizationResults(List<Game> targetGames, LocalizationBulkResponse response) {
         // 빠른 조회를 위해 List를 Map으로 변환 (O(N) 성능 최적화 유지)
         Map<Long, Game> gameMap = targetGames.stream()
                 .collect(Collectors.toMap(Game::getId, g -> g));
 
         int successCount = 0;
-        for (BulkLocalizationResponse.ResultItem result : response.results()) {
+        for (LocalizationBulkResponse.ResultItem result : response.results()) {
             Game game = gameMap.get(result.gameId());
             if (game != null) {
                 game.updateLocalization(result.descriptionKo(), result.storylineKo());

@@ -6,7 +6,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.List;
 
 @Schema(description = "AI 번역 서버 대량 응답 DTO")
-public record BulkLocalizationResponse(
+public record LocalizationBulkResponse(
 
         @Schema(description = "요청 성공 여부", example = "true")
         boolean success,

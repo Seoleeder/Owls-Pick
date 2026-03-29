@@ -5,7 +5,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import java.time.OffsetDateTime;
 import java.util.List;
 
-public record ITADPriceResponse(
+public record ItadPriceResponse(
         String id,
         @JsonProperty("deals") List<Deal> deals
 ) {

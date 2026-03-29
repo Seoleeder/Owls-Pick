@@ -1,8 +1,8 @@
 package io.github.seoleeder.owls_pick.client.igdb;
 
-import io.github.seoleeder.owls_pick.client.igdb.dto.IGDBGameDetailResponse;
-import io.github.seoleeder.owls_pick.client.igdb.dto.IGDBGameSummaryResponse;
-import io.github.seoleeder.owls_pick.client.igdb.util.IGDBQueryBuilder;
+import io.github.seoleeder.owls_pick.client.igdb.dto.IgdbGameDetailResponse;
+import io.github.seoleeder.owls_pick.client.igdb.dto.IgdbGameSummaryResponse;
+import io.github.seoleeder.owls_pick.client.igdb.util.IgdbQueryBuilder;
 import io.github.seoleeder.owls_pick.global.config.properties.IgdbProperties;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
@@ -15,12 +15,12 @@ import java.util.stream.Collectors;
 
 @Slf4j
 @Component
-public class IGDBClient {
+public class IgdbClient {
     private final RestClient restClient;
-    private final IGDBAuthManager authManager;
+    private final IgdbAuthManager authManager;
     private final IgdbProperties props;
 
-    public IGDBClient(RestClient restClient, IGDBAuthManager authManager, IgdbProperties props) {
+    public IgdbClient(RestClient restClient, IgdbAuthManager authManager, IgdbProperties props) {
         this.restClient = restClient;
         this.authManager = authManager;
         this.props = props;
@@ -33,9 +33,9 @@ public class IGDBClient {
      * IGDBQueryBuilder를 통해 체이닝 방식으로 RequestBody 생성
      * @param lastId 마지막으로 수집한 게임의 id. 중복 및 누락 없이 순차적 수집 가능
      * */
-    public List<IGDBGameSummaryResponse> getGameSummaryList(Long lastId, int limit) {
+    public List<IgdbGameSummaryResponse> getGameSummaryList(Long lastId, int limit) {
 
-        String requestBody = IGDBQueryBuilder.create()
+        String requestBody = IgdbQueryBuilder.create()
                 .fields(
                         "external_games.uid",
                         "external_games.external_game_source",
@@ -61,7 +61,7 @@ public class IGDBClient {
                 .limit(limit) // default : 10, max : 500
                 .build();
 
-        return sendRequest(requestBody, IGDBGameSummaryResponse[].class);
+        return sendRequest(requestBody, IgdbGameSummaryResponse[].class);
     }
 
     /**IGDB의 모든 메인 게임 데이터 수집
@@ -71,9 +71,9 @@ public class IGDBClient {
      * IGDBQueryBuilder를 통해 체이닝 방식으로 RequestBody 생성
      * @param lastTimestamp 마지막으로 수집한 시점
      * */
-    public List<IGDBGameSummaryResponse> getUpdatedGameSummaryList(Long lastTimestamp, int limit) {
+    public List<IgdbGameSummaryResponse> getUpdatedGameSummaryList(Long lastTimestamp, int limit) {
 
-        String requestBody = IGDBQueryBuilder.create()
+        String requestBody = IgdbQueryBuilder.create()
                 .fields(
                         "external_games.uid",
                         "external_games.external_game_source",
@@ -99,20 +99,20 @@ public class IGDBClient {
                 .limit(limit) // default : 10, max : 500
                 .build();
 
-        return sendRequest(requestBody, IGDBGameSummaryResponse[].class);
+        return sendRequest(requestBody, IgdbGameSummaryResponse[].class);
     }
 
     /** getGameSummary를 통해 가져온 IGDB ID를 통해 게임 상세정보 대량 요청
      * @param gameIds DB에 저장된 IGDB_ID 리스트
      * */
-    public List<IGDBGameDetailResponse> getGameDetailList(List<Long> gameIds, Integer limit) {
+    public List<IgdbGameDetailResponse> getGameDetailList(List<Long> gameIds, Integer limit) {
         if (gameIds.isEmpty()) return List.of();
 
         String idString = gameIds.stream()
                 .map(String::valueOf)
                 .collect(Collectors.joining(","));
 
-        String requestBody = IGDBQueryBuilder.create()
+        String requestBody = IgdbQueryBuilder.create()
                 .fields(
 
                         //매핑용
@@ -149,7 +149,7 @@ public class IGDBClient {
                 .limit(limit)
                 .build();
 
-        return sendRequest(requestBody, IGDBGameDetailResponse[].class);
+        return sendRequest(requestBody, IgdbGameDetailResponse[].class);
     }
 
 

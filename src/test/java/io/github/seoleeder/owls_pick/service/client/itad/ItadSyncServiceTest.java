@@ -1,12 +1,12 @@
 package io.github.seoleeder.owls_pick.service.client.itad;
 
-import io.github.seoleeder.owls_pick.client.itad.ITADDataCollector;
-import io.github.seoleeder.owls_pick.client.itad.dto.ITADPriceResponse;
-import io.github.seoleeder.owls_pick.client.itad.dto.ITADPriceResponse.Deal;
-import io.github.seoleeder.owls_pick.client.itad.dto.ITADPriceResponse.Deal.Price;
-import io.github.seoleeder.owls_pick.client.itad.dto.ITADPriceResponse.Deal.OriginalPrice;
-import io.github.seoleeder.owls_pick.client.itad.dto.ITADPriceResponse.Deal.StoreLow;
-import io.github.seoleeder.owls_pick.client.itad.dto.ITADPriceResponse.Deal.Shop;
+import io.github.seoleeder.owls_pick.client.itad.ItadDataCollector;
+import io.github.seoleeder.owls_pick.client.itad.dto.ItadPriceResponse;
+import io.github.seoleeder.owls_pick.client.itad.dto.ItadPriceResponse.Deal;
+import io.github.seoleeder.owls_pick.client.itad.dto.ItadPriceResponse.Deal.Price;
+import io.github.seoleeder.owls_pick.client.itad.dto.ItadPriceResponse.Deal.OriginalPrice;
+import io.github.seoleeder.owls_pick.client.itad.dto.ItadPriceResponse.Deal.StoreLow;
+import io.github.seoleeder.owls_pick.client.itad.dto.ItadPriceResponse.Deal.Shop;
 import io.github.seoleeder.owls_pick.global.config.properties.ItadProperties;
 import io.github.seoleeder.owls_pick.entity.game.Game;
 import io.github.seoleeder.owls_pick.entity.game.StoreDetail;
@@ -22,11 +22,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.function.Consumer;
 
@@ -38,11 +36,11 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-class ITADSyncServiceTest {
+class ItadSyncServiceTest {
 
-    private ITADSyncService itadSyncService;
+    private ItadSyncService itadSyncService;
 
-    @Mock private ITADDataCollector collector;
+    @Mock private ItadDataCollector collector;
     @Mock private GameRepository gameRepository;
     @Mock private StoreDetailRepository storeDetailRepository;
     @Mock private TransactionTemplate transactionTemplate;
@@ -52,7 +50,7 @@ class ITADSyncServiceTest {
         // ITAD 설정 객체 생성 (batchSize 포함)
         ItadProperties props = new ItadProperties("test-key", "api.test.com", 100);
 
-        itadSyncService = new ITADSyncService(
+        itadSyncService = new ItadSyncService(
                 collector,
                 gameRepository,
                 storeDetailRepository,
@@ -69,13 +67,13 @@ class ITADSyncServiceTest {
         StoreDetail detail = StoreDetail.builder().game(game).storeAppId("STEAM_123").build();
 
         // 조회 (1회차: 있음 / 2회차: 없음)
-        given(storeDetailRepository.findDetailsWithMissingItadId(any(), anyInt()))
-                .willReturn(List.of(detail))
+        given(storeDetailRepository.findValidGamesMissingItadId(eq(StoreName.STEAM), eq(0L), anyInt()))
+                .willReturn(List.of(detail));
+        given(storeDetailRepository.findValidGamesMissingItadId(eq(StoreName.STEAM), eq(10L), anyInt()))
                 .willReturn(Collections.emptyList());
 
         // API 호출
-        given(collector.collectItadIds(List.of("STEAM_123")))
-                .willReturn(Map.of("STEAM_123", "ITAD_456"));
+        given(collector.collectItadId("STEAM_123")).willReturn("ITAD_456");
 
         // 트랜잭션 모킹
         doAnswer(inv -> 1).when(transactionTemplate).execute(any());
@@ -92,7 +90,7 @@ class ITADSyncServiceTest {
     void syncPrices_UpdateOnlyIfChanged() {
         // Given
         Game game = Game.builder().id(1L).itadId("ITAD_1").title("Game 1").build();
-        given(gameRepository.findByItadIdIsNotNull()).willReturn(List.of(game));
+        given(gameRepository.findByItadIdIsNotNullAndItadIdNot("NONE")).willReturn(List.of(game));
 
         // API 응답 생성
         // 현재가 1000원, 정가 2000원, 최저가 500원
@@ -105,7 +103,7 @@ class ITADSyncServiceTest {
                 OffsetDateTime.now().plusDays(1), // expiry
                 "http://steam.com"               // url
         );
-        ITADPriceResponse priceRes = new ITADPriceResponse("ITAD_1", List.of(deal));
+        ItadPriceResponse priceRes = new ItadPriceResponse("ITAD_1", List.of(deal));
 
         given(collector.collectPrices(anyList())).willReturn(List.of(priceRes));
 
@@ -142,7 +140,7 @@ class ITADSyncServiceTest {
     void syncPrices_SkipIfSame() {
         // Given
         Game game = Game.builder().id(1L).itadId("ITAD_1").build();
-        given(gameRepository.findByItadIdIsNotNull()).willReturn(List.of(game));
+        given(gameRepository.findByItadIdIsNotNullAndItadIdNot("NONE")).willReturn(List.of(game));
 
         // API 응답 (정가 1000원, 할인 없음 0%)
         Deal deal = new Deal(
@@ -154,7 +152,7 @@ class ITADSyncServiceTest {
                 OffsetDateTime.now().plusDays(1), // Expiry (할인 없어서 무시)
                 "http://steam.com"               // URL
         );
-        ITADPriceResponse priceRes = new ITADPriceResponse("ITAD_1", List.of(deal));
+        ItadPriceResponse priceRes = new ItadPriceResponse("ITAD_1", List.of(deal));
 
         given(collector.collectPrices(anyList())).willReturn(List.of(priceRes));
 

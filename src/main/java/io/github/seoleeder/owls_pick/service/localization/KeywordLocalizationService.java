@@ -1,7 +1,7 @@
 package io.github.seoleeder.owls_pick.service.localization;
 
 import io.github.seoleeder.owls_pick.dto.request.KeywordLocalizationRequest;
-import io.github.seoleeder.owls_pick.dto.response.BulkKeywordLocalizationResponse;
+import io.github.seoleeder.owls_pick.dto.response.KeywordLocalizationBulkResponse;
 import io.github.seoleeder.owls_pick.entity.game.KeywordDictionary;
 import io.github.seoleeder.owls_pick.entity.game.Tag;
 import io.github.seoleeder.owls_pick.global.config.properties.LocalizationProperties;
@@ -154,7 +154,7 @@ public class KeywordLocalizationService {
         KeywordLocalizationRequest request = buildRequestDto(chunkEntities);
 
         // 키워드 한글화 엔진 통신
-        BulkKeywordLocalizationResponse response = sendToAiEngine(request);
+        KeywordLocalizationBulkResponse response = sendToAiEngine(request);
 
         // 결과 DB 반영 (트랜잭션 적용 구간)
         transactionTemplate.executeWithoutResult(status -> {
@@ -210,7 +210,7 @@ public class KeywordLocalizationService {
     /**
      * 한글화 엔진으로 HTTP 요청 전송 및 결과 반환
      */
-    private BulkKeywordLocalizationResponse sendToAiEngine(KeywordLocalizationRequest request) {
+    private KeywordLocalizationBulkResponse sendToAiEngine(KeywordLocalizationRequest request) {
         String targetUri = localizationProperties.baseUrl() + "/api/localization/keywords";
 
         try {
@@ -219,7 +219,7 @@ public class KeywordLocalizationService {
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(request)
                     .retrieve()
-                    .body(BulkKeywordLocalizationResponse.class);
+                    .body(KeywordLocalizationBulkResponse.class);
         } catch (Exception e) {
             log.error("Failed to communicate with Keyword Localization Engine. Error: {}", e.getMessage());
             throw new CustomException(ErrorCode.LOCALIZATION_ENGINE_COMMUNICATION_FAILED);
@@ -229,7 +229,7 @@ public class KeywordLocalizationService {
     /**
      * 키워드 한글화 엔진 응답을 원본 사전 엔티티에 매핑
      */
-    private void applyLocalizationResults(List<KeywordDictionary> chunkEntities, BulkKeywordLocalizationResponse response) {
+    private void applyLocalizationResults(List<KeywordDictionary> chunkEntities, KeywordLocalizationBulkResponse response) {
         if (response == null || response.localizationResults().isEmpty()) return;
 
         Map<String, String> responseMap = response.localizationResults().stream()

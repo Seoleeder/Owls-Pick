@@ -158,7 +158,9 @@ create table store_detail
             check ((store_name)::text = ANY
         ((ARRAY ['STEAM'::character varying, 'EPIC_GAMES_STORE'::character varying, 'UBISOFT_STORE'::character varying, 'EA_STORE'::character varying, 'MICROSOFT_STORE'::character varying, 'GREEN_MAN_GAMING'::character varying, 'GAMERSGATE'::character varying, 'FANATICAL'::character varying, 'BLIZZARD'::character varying])::text[])),
     store_app_id   varchar(255),
-    url            text
+    url            text,
+
+    constraint uk_store_detail_game_store unique (game_id, store_name)
 );
 
 create table tag

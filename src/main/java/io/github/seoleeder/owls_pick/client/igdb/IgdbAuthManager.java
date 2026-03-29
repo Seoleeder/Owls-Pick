@@ -15,7 +15,7 @@ import java.util.concurrent.TimeUnit;
  * */
 @Slf4j
 @Component
-public class IGDBAuthManager {
+public class IgdbAuthManager {
 
     private final RestClient restClient;
     private final StringRedisTemplate redisTemplate;
@@ -23,7 +23,7 @@ public class IGDBAuthManager {
 
     private static final String KEY_IGDB_ACCESS_TOKEN = "auth:igdb:token";
 
-    public IGDBAuthManager(RestClient restClient, StringRedisTemplate redisTemplate, IgdbProperties props) {
+    public IgdbAuthManager(RestClient restClient, StringRedisTemplate redisTemplate, IgdbProperties props) {
         this.restClient = restClient;
         this.redisTemplate = redisTemplate;
         this.props = props;

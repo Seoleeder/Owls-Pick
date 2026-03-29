@@ -1,9 +1,9 @@
 package io.github.seoleeder.owls_pick.scheduler;
 
+import io.github.seoleeder.owls_pick.service.client.igdb.IgdbSyncService;
 import io.github.seoleeder.owls_pick.service.localization.KeywordLocalizationService;
 import io.github.seoleeder.owls_pick.service.localization.LocalizationService;
-import io.github.seoleeder.owls_pick.service.client.igdb.IGDBSyncService;
-import io.github.seoleeder.owls_pick.service.client.itad.ITADSyncService;
+import io.github.seoleeder.owls_pick.service.client.itad.ItadSyncService;
 import io.github.seoleeder.owls_pick.service.client.steam.SteamAppSyncService;
 import io.github.seoleeder.owls_pick.service.client.steam.SteamDashboardSyncService;
 import io.github.seoleeder.owls_pick.service.client.steam.SteamReviewSyncService;
@@ -21,8 +21,8 @@ public class GameDataScheduler {
     private final SteamAppSyncService steamAppService;
     private final SteamDashboardSyncService steamDashboardService;
     private final SteamReviewSyncService steamReviewService;
-    private final IGDBSyncService igdbService;
-    private final ITADSyncService itadService;
+    private final IgdbSyncService igdbService;
+    private final ItadSyncService itadService;
     private final LocalizationService localizationService;
     private final KeywordLocalizationService keywordLocalizationService;
 

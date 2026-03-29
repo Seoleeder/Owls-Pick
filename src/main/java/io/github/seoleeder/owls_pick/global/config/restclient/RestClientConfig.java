@@ -51,4 +51,22 @@ public class RestClientConfig {
                 .requestInterceptor(loggingInterceptor)
                 .build();
     }
+
+    /**
+     * 외부 게임 데이터 수집(Steam Review, ITAD) 전용 RestClient 빈
+     */
+    @Bean("externalApiRestClient")
+    public RestClient externalApiRestClient() {
+        HttpClient httpClient = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(3)) // 연결 시도 3초 제한
+                .build();
+
+        JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory(httpClient);
+        factory.setReadTimeout(Duration.ofSeconds(5)); // 응답 대기 5초 제한
+
+        return RestClient.builder()
+                .requestFactory(factory)
+                .requestInterceptor(loggingInterceptor)
+                .build();
+    }
 }

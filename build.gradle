@@ -25,7 +25,7 @@ repositories {
 }
 
 ext {
-	set('springAiVersion', "1.1.2")
+	set('resilience4jVersion', "2.4.0")
 }
 
 dependencies {
@@ -56,14 +56,16 @@ dependencies {
 	// Firebase Admin SDK
 	implementation 'com.google.firebase:firebase-admin:9.8.0'
 
+	// Resilience4j Starter
+	implementation "io.github.resilience4j:resilience4j-spring-boot3:${resilience4jVersion}"
+
+	// Spring AOP
+	implementation 'org.springframework.boot:spring-boot-starter-aop'
+
 	// Redis
 	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
 
 	annotationProcessor "org.springframework.boot:spring-boot-configuration-processor"
-//	implementation 'org.springframework.ai:spring-ai-advisors-vector-store'
-//	implementation 'org.springframework.ai:spring-ai-starter-model-google-genai'
-//	implementation 'org.springframework.ai:spring-ai-starter-model-google-genai-embedding'
-//	implementation 'org.springframework.ai:spring-ai-starter-vector-store-pgvector'
 	compileOnly 'org.projectlombok:lombok'
 	runtimeOnly 'org.postgresql:postgresql'
 	annotationProcessor 'org.projectlombok:lombok'
@@ -79,12 +81,6 @@ dependencies {
 	testImplementation 'org.springframework.boot:spring-boot-testcontainers'
 	testImplementation 'org.testcontainers:junit-jupiter'
 	testImplementation 'org.testcontainers:postgresql'
-}
-
-dependencyManagement {
-	imports {
-		mavenBom "org.springframework.ai:spring-ai-bom:${springAiVersion}"
-	}
 }
 
 tasks.named('test') {

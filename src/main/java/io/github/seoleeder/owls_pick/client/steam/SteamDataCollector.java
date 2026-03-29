@@ -22,6 +22,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SteamDataCollector {
     private final SteamClient steamClient;
+    private final SteamApiCaller steamApiCaller;   // 스팀 리뷰 전용 Caller
 
     // 최소 리뷰 수
     private static final int MIN_TOTAL_REVIEWS = 10;
@@ -42,8 +43,8 @@ public class SteamDataCollector {
      */
     public SteamReviewResponse collectRefinedReviews(Long appId, int minVotesUp) {
 
-        // appid에 대한 리뷰 통계 확인
-        SteamReviewStatsResponse statsResponse = steamClient.getReviewStat(appId);
+        // Caller를 통한 안전한 리뷰 통계 조회
+        SteamReviewStatsResponse statsResponse = steamApiCaller.getReviewStatSafe(appId);
 
         // null 체크
         if (statsResponse == null || statsResponse.querySummary() == null) {
@@ -84,7 +85,8 @@ public class SteamDataCollector {
         while (collected.size() < quota) {
             try{
                 // 배치 단위 수집 요청 (num_per_page = 100)
-                SteamReviewDetailResponse response = steamClient.getReviewDetail(appId, cursor, reviewType);
+                // Caller를 통한 안전한 상세 리뷰 조회 (루프마다 RateLimiter 제어)
+                SteamReviewDetailResponse response = steamApiCaller.getReviewDetailSafe(appId, cursor, reviewType);
 
                 if (response == null || response.reviews() == null || response.reviews().isEmpty()) {
                     break; // 더 이상 데이터가 없으면 중단
