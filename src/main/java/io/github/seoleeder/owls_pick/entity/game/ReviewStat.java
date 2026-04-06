@@ -2,8 +2,11 @@ package io.github.seoleeder.owls_pick.entity.game;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Getter
 @Builder
@@ -43,6 +46,14 @@ public class ReviewStat {
     @Column(columnDefinition = "TEXT")
     private String reviewSummary;
 
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    @Column(columnDefinition = "text[]")
+    private List<String> positiveKeywords;
+
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    @Column(columnDefinition = "text[]")
+    private List<String> negativeKeywords;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
@@ -67,5 +78,12 @@ public class ReviewStat {
         this.totalReview = totalReview;
         this.totalPositive = totalPositive;
         this.totalNegative = totalNegative;
+    }
+
+    // 리뷰 요약 업데이트
+    public void updateReviewSummary(String reviewSummary, List<String> positiveKeywords, List<String> negativeKeywords) {
+        this.reviewSummary = reviewSummary;
+        this.positiveKeywords = positiveKeywords;
+        this.negativeKeywords = negativeKeywords;
     }
 }

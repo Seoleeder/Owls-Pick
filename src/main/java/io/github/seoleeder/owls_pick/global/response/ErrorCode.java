@@ -51,7 +51,7 @@ public enum ErrorCode {
     // 500 Internal Server Error
     INTERNAL_SERVER_ERROR(50000, HttpStatus.INTERNAL_SERVER_ERROR, "서버 내부 오류입니다."),
     OAUTH_SERVER_ERROR(50001, HttpStatus.INTERNAL_SERVER_ERROR, "소셜 로그인 서버와 통신 중 오류가 발생했습니다."),
-    LOCALIZATION_ENGINE_COMMUNICATION_FAILED(50002,HttpStatus.INTERNAL_SERVER_ERROR, "한글화 엔진과의 통신에 실패했습니다."),
+    FASTAPI_COMMUNICATION_FAILED(50002,HttpStatus.INTERNAL_SERVER_ERROR, "FastAPI와의 통신에 실패했습니다."),
     INVALID_LOCALIZATION_RESPONSE(50003,HttpStatus.INTERNAL_SERVER_ERROR, "한글화 엔진으로부터 유효하지 않은 응답을 받았습니다.");
 
     private final Integer code;

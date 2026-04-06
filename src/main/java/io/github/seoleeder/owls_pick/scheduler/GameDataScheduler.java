@@ -1,5 +1,6 @@
 package io.github.seoleeder.owls_pick.scheduler;
 
+import io.github.seoleeder.owls_pick.service.ReviewSummaryService;
 import io.github.seoleeder.owls_pick.service.client.igdb.IgdbSyncService;
 import io.github.seoleeder.owls_pick.service.localization.KeywordLocalizationService;
 import io.github.seoleeder.owls_pick.service.localization.LocalizationService;
@@ -25,6 +26,7 @@ public class GameDataScheduler {
     private final ItadSyncService itadService;
     private final LocalizationService localizationService;
     private final KeywordLocalizationService keywordLocalizationService;
+    private final ReviewSummaryService reviewSummaryService;
 
     @Scheduled(cron = "0 0 0 * * *")
     public void scheduleDailyFullSync(){
@@ -45,8 +47,8 @@ public class GameDataScheduler {
 
             log.info("[Scheduler] Daily Full Sync Finished!");
 
-            // 한글화 파이프라인 실행
-            triggerAsyncLocalizationPipeline();
+            // 생성형 AI 파이프라인 실행 (한글화, 리뷰 요약)
+            triggerAsyncGenaiPipeline();
 
         } catch (Exception e) {
             log.error("[Scheduler] Daily Full Sync Failed", e);
@@ -56,7 +58,7 @@ public class GameDataScheduler {
     /**
      * 일일 데이터 수집 직후 구동되는 비동기 한글화 파이프라인
      */
-    private void triggerAsyncLocalizationPipeline() {
+    private void triggerAsyncGenaiPipeline() {
         // 별도의 비동기 스레드에서 실행
         CompletableFuture.runAsync(() -> {
             log.info("[Scheduler] Starting Daily Async Localization Pipeline...");
@@ -78,6 +80,16 @@ public class GameDataScheduler {
             }
 
             log.info("[Scheduler] All Daily Localization Pipelines Finished.");
+
+            // AI 리뷰 요약 파이프라인 (추가)
+            log.info("[Scheduler] Starting Daily AI Review Summary Pipeline...");
+            try {
+                reviewSummaryService.runPipeline();
+            } catch (Exception e) {
+                log.error("[Scheduler] Daily AI Review Summary Pipeline Failed", e);
+            }
+
+            log.info("[Scheduler] All Daily GenAI Pipelines Finished.");
 
         }).exceptionally(ex -> {
             log.error("[Scheduler] Daily Localization Pipeline Failed: {}", ex.getMessage());

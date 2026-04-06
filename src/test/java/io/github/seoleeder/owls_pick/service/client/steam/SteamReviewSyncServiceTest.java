@@ -107,7 +107,7 @@ class SteamReviewSyncServiceTest {
         SteamReviewDetail reviewDetail = new SteamReviewDetail(100L, new SteamReviewDetail.Author(7), new BigDecimal(6.7), "Nice Game!", 10, true, Instant.now().getEpochSecond());
         SteamReviewResponse response = new SteamReviewResponse(stats, List.of(reviewDetail));
 
-        given(collector.collectRefinedReviews(12345L, 5)).willReturn(response);
+        given(collector.collectRefinedReviews(12345L)).willReturn(response);
 
         // 5. 기존 통계/리뷰 존재 여부 (신규 저장 시나리오)
         given(reviewStatRepository.findById(1L)).willReturn(Optional.empty());
@@ -143,7 +143,7 @@ class SteamReviewSyncServiceTest {
         SteamReviewDetail reviewA = new SteamReviewDetail(170L, new SteamReviewDetail.Author(7), new BigDecimal(1.2), "Good!", 5, true, Instant.now().getEpochSecond());
         SteamReviewDetail reviewB = new SteamReviewDetail(180L, new SteamReviewDetail.Author(8), new BigDecimal(3.4), "Best Driver!", 8, true, Instant.now().getEpochSecond());
 
-        given(collector.collectRefinedReviews(999L, 5))
+        given(collector.collectRefinedReviews(999L))
                 .willReturn(new SteamReviewResponse(stats, List.of(reviewA, reviewB)));
 
         // Mock 객체(ReviewStat) 준비 -> updateStats 호출 여부 확인용
@@ -200,7 +200,7 @@ class SteamReviewSyncServiceTest {
         when(storeDetailRepository.findGamesNeedingReviewUpdate(any(), anyInt()))
                 .thenReturn(List.of(detail));
 
-        when(collector.collectRefinedReviews(anyLong(), anyInt()))
+        when(collector.collectRefinedReviews(anyLong()))
                 .thenReturn(mockResponse); // 리뷰가 포함된 응답 리턴
 
         when(reviewStatRepository.findById(gameId))

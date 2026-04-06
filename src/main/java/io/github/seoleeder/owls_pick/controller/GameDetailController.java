@@ -23,7 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/games") // 프로젝트 API 규격에 맞춰 수정해주세요
 @RequiredArgsConstructor
-@Tag(name = "Game Detail", description = "게임 상세 정보 조회 API")
+@Tag(name = "게임 상세 페이지 API", description = "게임 상세 정보 조회 API")
 public class GameDetailController {
     private final GameDetailService gameDetailService;
 

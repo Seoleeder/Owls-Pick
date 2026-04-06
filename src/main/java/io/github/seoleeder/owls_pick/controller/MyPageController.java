@@ -23,7 +23,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
-@Tag(name = "My Page", description = "마이 페이지 통합 관리 API (프로필, 위시리스트)")
+@Tag(name = "마이 페이지 API", description = "마이 페이지 통합 관리 API (프로필, 위시리스트)")
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/mypage")

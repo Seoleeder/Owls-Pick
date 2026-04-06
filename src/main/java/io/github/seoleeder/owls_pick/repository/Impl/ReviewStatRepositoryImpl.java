@@ -1,10 +1,12 @@
 package io.github.seoleeder.owls_pick.repository.Impl;
 
 import com.querydsl.jpa.impl.JPAQueryFactory;
+import io.github.seoleeder.owls_pick.entity.game.ReviewStat;
 import io.github.seoleeder.owls_pick.repository.Custom.ReviewStatRepositoryCustom;
 import lombok.RequiredArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import static io.github.seoleeder.owls_pick.entity.game.QReview.review;
 import static io.github.seoleeder.owls_pick.entity.game.QReviewStat.reviewStat;
@@ -37,6 +39,22 @@ public class ReviewStatRepositoryImpl implements ReviewStatRepositoryCustom {
                 .set(reviewStat.weeklyReview, weeklyCount)
                 .where(reviewStat.game.id.eq(gameId))
                 .execute();
+    }
+
+    @Override
+    public List<ReviewStat> findTargetsWithoutSummary(int minThreshold, int batchSize) {
+
+        return queryFactory.selectFrom(reviewStat)
+                .where(
+                        // 총 리뷰 수가 임계치 이상
+                        reviewStat.totalReview.goe(minThreshold),
+
+                        // 리뷰 요약 텍스트가 없는 데이터 필터링
+                        reviewStat.reviewSummary.isNull()
+                                .or(reviewStat.reviewSummary.isEmpty())
+                )
+                .limit(batchSize)
+                .fetch();
     }
 
 }

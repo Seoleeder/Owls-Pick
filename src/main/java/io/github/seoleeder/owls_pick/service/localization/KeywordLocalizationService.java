@@ -4,7 +4,7 @@ import io.github.seoleeder.owls_pick.dto.request.KeywordLocalizationRequest;
 import io.github.seoleeder.owls_pick.dto.response.KeywordLocalizationBulkResponse;
 import io.github.seoleeder.owls_pick.entity.game.KeywordDictionary;
 import io.github.seoleeder.owls_pick.entity.game.Tag;
-import io.github.seoleeder.owls_pick.global.config.properties.LocalizationProperties;
+import io.github.seoleeder.owls_pick.global.config.properties.GenaiProperties;
 import io.github.seoleeder.owls_pick.global.response.CustomException;
 import io.github.seoleeder.owls_pick.global.response.ErrorCode;
 import io.github.seoleeder.owls_pick.repository.KeywordDictionaryRepository;
@@ -26,20 +26,20 @@ public class KeywordLocalizationService {
     private final KeywordDictionaryRepository dictionaryRepository;
     private final TagRepository tagRepository;
     private final RestClient localizationRestClient;
-    private final LocalizationProperties localizationProperties;
+    private final GenaiProperties genaiProperties;
     private final TransactionTemplate transactionTemplate;
 
     public KeywordLocalizationService(
             KeywordDictionaryRepository dictionaryRepository,
             TagRepository tagRepository,
-            @Qualifier("localizationRestClient") RestClient localizationRestClient,
-            LocalizationProperties localizationProperties,
+            @Qualifier("genaiRestClient") RestClient localizationRestClient,
+            GenaiProperties localizationProperties,
             TransactionTemplate transactionTemplate) {
 
         this.dictionaryRepository = dictionaryRepository;
         this.tagRepository = tagRepository;
         this.localizationRestClient = localizationRestClient;
-        this.localizationProperties = localizationProperties;
+        this.genaiProperties = localizationProperties;
         this.transactionTemplate = transactionTemplate;
 
     }
@@ -48,7 +48,7 @@ public class KeywordLocalizationService {
      * 환경 변수에 설정된 기본 청크 사이즈를 사용하여 파이프라인 전체 실행
      */
     public int runPipeline() {
-        return runPipeline(localizationProperties.chunkSize().keyword(), false);
+        return runPipeline(genaiProperties.localization().chunkSize().keyword(), false);
     }
 
     /**
@@ -102,7 +102,7 @@ public class KeywordLocalizationService {
      * 환경 변수에 설정된 청크 사이즈를 사용하여 키워드 한글화 실행
      */
     public void processUnlocalizedKeywords() {
-        processUnlocalizedKeywords(localizationProperties.chunkSize().keyword(), false);
+        processUnlocalizedKeywords(genaiProperties.localization().chunkSize().keyword(), false);
     }
 
     /**
@@ -211,7 +211,7 @@ public class KeywordLocalizationService {
      * 한글화 엔진으로 HTTP 요청 전송 및 결과 반환
      */
     private KeywordLocalizationBulkResponse sendToAiEngine(KeywordLocalizationRequest request) {
-        String targetUri = localizationProperties.baseUrl() + "/api/localization/keywords";
+        String targetUri = genaiProperties.fastapiUrl() + "/api/localization/keywords";
 
         try {
             return localizationRestClient.post()
@@ -222,7 +222,7 @@ public class KeywordLocalizationService {
                     .body(KeywordLocalizationBulkResponse.class);
         } catch (Exception e) {
             log.error("Failed to communicate with Keyword Localization Engine. Error: {}", e.getMessage());
-            throw new CustomException(ErrorCode.LOCALIZATION_ENGINE_COMMUNICATION_FAILED);
+            throw new CustomException(ErrorCode.FASTAPI_COMMUNICATION_FAILED);
         }
     }
 

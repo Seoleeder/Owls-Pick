@@ -25,6 +25,7 @@ import org.springframework.web.client.RestClientException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -131,7 +132,7 @@ public class SteamReviewSyncService {
             Long appId = Long.parseLong(appIdStr);
 
             // 게임의 리뷰 통계와 최소 유용함 수가 일정 수치 이상인 리뷰들 수집
-            SteamReviewResponse response = collector.collectRefinedReviews(appId, steamProps.review().minVotesUp());
+            SteamReviewResponse response = collector.collectRefinedReviews(appId);
 
             if (response == null) return 0;
 
@@ -219,19 +220,26 @@ public class SteamReviewSyncService {
      * @param reviews 해당 게임에 대한 리뷰 상세 데이터
      * */
     private int saveReviews(Game game, List<SteamReviewDetail> reviews) {
+        // 해당 게임의 기존 리뷰 ID 목록 로드
+        Set<Long> existingIds = reviewRepository.findRecommendationIdsByGameId(game.getId());
+
         List<Review> reviewsToSave = new ArrayList<>();
 
         for (SteamReviewDetail reviewDetail : reviews) {
-            // 이미 존재하는 리뷰면 저장 X
-            if (reviewRepository.existsByGameIdAndRecommendationId(game.getId(), reviewDetail.recommendationId())) {
+            // 중복 리뷰 필터링
+            if (existingIds.contains(reviewDetail.recommendationId())) {
                 continue;
             }
+
+            // PostgreSQL Null Byte(\u0000) 에러 방지용 문자열 정제
+            String safeReviewText = reviewDetail.reviewText() != null ?
+                    reviewDetail.reviewText().replace("\u0000", "") : "";
 
             // 새로운 recommendationId를 가진 리뷰만 저장
             Review newReview = Review.builder()
                     .game(game)
                     .recommendationId(reviewDetail.recommendationId())
-                    .reviewText(reviewDetail.reviewText())
+                    .reviewText(safeReviewText)
                     .weightedVoteScore(reviewDetail.weightedVoteScore())
                     .playtimeAtReview(reviewDetail.author().playtimeAtReview())
                     .votedUp(reviewDetail.votedUp())
@@ -242,8 +250,9 @@ public class SteamReviewSyncService {
             reviewsToSave.add(newReview);
         }
 
+        // 일괄 삽입(Bulk Insert) 실행
         if (!reviewsToSave.isEmpty()) {
-            reviewRepository.saveAll(reviewsToSave);
+            reviewRepository.bulkInsertReviews(reviewsToSave);
         }
 
         return reviewsToSave.size();

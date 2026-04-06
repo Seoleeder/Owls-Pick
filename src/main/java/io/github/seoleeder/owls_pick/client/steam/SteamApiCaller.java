@@ -30,6 +30,7 @@ public class SteamApiCaller {
     @RateLimiter(name = STEAM_API)
     @Retry(name = STEAM_API)
     public SteamReviewDetailResponse getReviewDetailSafe(Long appId, String cursor, String reviewType) {
+
         return steamClient.getReviewDetail(appId, cursor, reviewType);
     }
 }

@@ -19,8 +19,10 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
+
 @RestController
 @RequiredArgsConstructor
+@Tag(name = "위시리스트 API", description = "특정 게임 위시리스트 추가 및 해제 API")
 @RequestMapping("/api/games/{gameId}/wishlists")
 public class WishlistController {
     private final WishlistService wishlistService;
