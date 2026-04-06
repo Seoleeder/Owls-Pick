@@ -3,7 +3,7 @@ package io.github.seoleeder.owls_pick.service.localization;
 import io.github.seoleeder.owls_pick.dto.request.BulkLocalizationRequest;
 import io.github.seoleeder.owls_pick.dto.response.LocalizationBulkResponse;
 import io.github.seoleeder.owls_pick.entity.game.Game;
-import io.github.seoleeder.owls_pick.global.config.properties.LocalizationProperties;
+import io.github.seoleeder.owls_pick.global.config.properties.GenaiProperties;
 import io.github.seoleeder.owls_pick.global.response.CustomException;
 import io.github.seoleeder.owls_pick.global.response.ErrorCode;
 import io.github.seoleeder.owls_pick.repository.GameRepository;
@@ -24,19 +24,19 @@ public class LocalizationService {
 
     private final GameRepository gameRepository;
     private final RestClient localizationRestClient;
-    private final LocalizationProperties localizationProperties;
+    private final GenaiProperties genaiProperties;
     private final TransactionTemplate transactionTemplate;
 
 
     public LocalizationService(
             GameRepository gameRepository,
-            @Qualifier("localizationRestClient") RestClient localizationRestClient,
-            LocalizationProperties localizationProperties,
+            @Qualifier("genaiRestClient") RestClient localizationRestClient,
+            GenaiProperties genaiProperties,
             TransactionTemplate transactionTemplate) {
 
         this.gameRepository = gameRepository;
         this.localizationRestClient = localizationRestClient;
-        this.localizationProperties = localizationProperties;
+        this.genaiProperties = genaiProperties;
         this.transactionTemplate = transactionTemplate;
     }
 
@@ -44,7 +44,7 @@ public class LocalizationService {
      * 환경 변수에 설정된 기본 청크 사이즈를 사용하여 한글화 파이프라인 전체 실행
      */
     public void runPipeline() {
-        runPipeline(localizationProperties.chunkSize().game());
+        runPipeline(genaiProperties.localization().chunkSize().game());
     }
 
     /**
@@ -125,7 +125,7 @@ public class LocalizationService {
     private LocalizationBulkResponse sendToAiEngine(BulkLocalizationRequest request) {
         log.info("Sending bulk localization request for {} games to AI Engine...", request.games().size());
 
-        String targetUri = localizationProperties.baseUrl() + "/api/localization/bulk";
+        String targetUri = genaiProperties.fastapiUrl() + "/api/localization/bulk";
 
         LocalizationBulkResponse response;
 
@@ -138,12 +138,12 @@ public class LocalizationService {
                     .body(LocalizationBulkResponse.class);
         } catch (Exception e) {
             log.error("Failed to communicate with Localization Engine. Error: {}", e.getMessage());
-            throw new CustomException(ErrorCode.LOCALIZATION_ENGINE_COMMUNICATION_FAILED);
+            throw new CustomException(ErrorCode.FASTAPI_COMMUNICATION_FAILED);
         }
 
         if (response == null || !response.success() || response.results() == null) {
             log.error("AI Engine returned invalid response or task failed.");
-            throw new CustomException(ErrorCode.LOCALIZATION_ENGINE_COMMUNICATION_FAILED);
+            throw new CustomException(ErrorCode.FASTAPI_COMMUNICATION_FAILED);
         }
         return response;
 

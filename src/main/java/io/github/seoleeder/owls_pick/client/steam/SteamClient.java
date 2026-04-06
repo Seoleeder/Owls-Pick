@@ -59,7 +59,7 @@ public class SteamClient{
     }
 
     /**
-     * Steam app id로 리뷰 통계 데이터 수집. num_per_page = 20으로 비용 최소화
+     * Steam app id로 리뷰 통계 데이터 수집. num_per_page = 0으로 비용 최소화
      * @param appId 조회 대상이 되는 게임의 ID
      * */
     public SteamReviewStatsResponse getReviewStat(Long appId) {
@@ -70,9 +70,9 @@ public class SteamClient{
                         .path("/appreviews/{appId}")
                         .queryParam("json", 1)
                         .queryParam("language", "korean")
-                        .queryParam("filter", "recent")    // 최신순으로 정렬
+                        .queryParam("filter", "updated")    // '유용한 순'으로 정렬
                         .queryParam("purchase_type", "all")   // 모든 리뷰 통계 데이터 수집
-                        .queryParam("num_per_page", 20)   // 최소 리소스 사용
+                        .queryParam("num_per_page", 0)   // 최소 리소스 사용
                         .build(appId))
                 .retrieve()
                 .body(SteamReviewStatsResponse.class);
@@ -92,11 +92,12 @@ public class SteamClient{
                         .path("/appreviews/{appId}")
                         .queryParam("json", 1)
                         .queryParam("language", "korean")
-                        .queryParam("filter", "recent")    // 최신순으로 정렬
+                        .queryParam("filter", "updated")
+                        .queryParam("purchase_type", "all")
                         .queryParam("review_type", reviewType) // positive 또는 negative
-                        .queryParam("cursor", cursor)
+                        .queryParam("cursor", "{cursor}")
                         .queryParam("num_per_page", 100)   // 처리 속도 극대화
-                        .build(appId))
+                        .build(appId, cursor))
                 .retrieve()
                 .body(SteamReviewDetailResponse.class);
     }

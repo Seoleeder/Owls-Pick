@@ -35,8 +35,8 @@ public class RestClientConfig {
     /**
      * GEMINI 한글화 엔진(FastAPI) 전용 RestClient 빈
      */
-    @Bean("localizationRestClient")
-    public RestClient localizationRestClient() {
+    @Bean("genaiRestClient")
+    public RestClient genaiRestClient() {
         HttpClient httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(5))
                 .build();

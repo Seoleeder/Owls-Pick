@@ -7,22 +7,23 @@ import io.github.seoleeder.owls_pick.client.steam.dto.Review.SteamReviewResponse
 import io.github.seoleeder.owls_pick.client.steam.dto.Review.SteamReviewStatsResponse;
 import io.github.seoleeder.owls_pick.client.steam.dto.Review.SteamReviewStatsResponse.SteamReviewStats;
 import io.github.seoleeder.owls_pick.client.steam.dto.SteamAppListResponse;
+import io.github.seoleeder.owls_pick.client.steam.policy.SteamReviewCollectionPolicy;
+import io.github.seoleeder.owls_pick.global.config.properties.SteamProperties;
 import io.github.seoleeder.owls_pick.global.util.TimestampUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class SteamDataCollector {
     private final SteamClient steamClient;
-    private final SteamApiCaller steamApiCaller;   // 스팀 리뷰 전용 Caller
+    private final SteamApiCaller steamApiCaller; // 스팀 리뷰 전용 Caller
+    private final SteamProperties steamProps;
 
     // 최소 리뷰 수
     private static final int MIN_TOTAL_REVIEWS = 10;
@@ -39,9 +40,8 @@ public class SteamDataCollector {
     /**
      * 전략적 리뷰 수집
      * 리뷰 통계 조회 -> p/n 별로 목표 설정 -> 배치 수집
-     * @param minVotesUp votes_up 필터링 (리뷰 유용함 점수)
      */
-    public SteamReviewResponse collectRefinedReviews(Long appId, int minVotesUp) {
+    public SteamReviewResponse collectRefinedReviews(Long appId) {
 
         // Caller를 통한 안전한 리뷰 통계 조회
         SteamReviewStatsResponse statsResponse = steamApiCaller.getReviewStatSafe(appId);
@@ -59,18 +59,18 @@ public class SteamDataCollector {
             return new SteamReviewResponse(summary, Collections.emptyList());
         }
 
-        // 적응형 샘플링 목표치 계산
-        int targetTotal = calculateAdaptiveTarget(totalReviews);
+        // 총 리뷰 수에 기반한 수집 정책 발급
+        SteamReviewCollectionPolicy policy = SteamReviewCollectionPolicy.of(totalReviews);
 
         // 긍정/부정 비율에 따른 할당량 계산
         double posRatio = (double) summary.totalPositive() / totalReviews;
-        int posQuota = (int) (targetTotal * posRatio);
-        int negQuota = targetTotal - posQuota;
+        int posQuota = (int) (policy.targetQuota() * posRatio);
+        int negQuota = policy.targetQuota() - posQuota;
 
         // 리뷰 상세 데이터 수집
         List<SteamReviewDetail> collectedReviews = new ArrayList<>();
-        collectedReviews.addAll(collectReviewByQuota(appId, "positive", posQuota, minVotesUp));
-        collectedReviews.addAll(collectReviewByQuota(appId, "negative", negQuota, minVotesUp));
+        collectedReviews.addAll(collectReviewByQuota(appId, "positive", posQuota, policy));
+        collectedReviews.addAll(collectReviewByQuota(appId, "negative", negQuota, policy));
 
         return new SteamReviewResponse(summary,collectedReviews);
     }
@@ -78,45 +78,83 @@ public class SteamDataCollector {
     /**
      * 특정 타입(긍정/부정) 리뷰에 대해 목표치만큼 수집
      */
-    public List<SteamReviewDetail> collectReviewByQuota(Long appId, String reviewType, int quota, int minVotesUp) {
+    public List<SteamReviewDetail> collectReviewByQuota(Long appId, String reviewType, int quota, SteamReviewCollectionPolicy policy) {
         List<SteamReviewDetail> collected = new ArrayList<>();
-        String cursor = "*"; //커서 초기화
+        Set<Long> processedIds = new HashSet<>(); // 커서 리셋 시 중복 수집을 방지하기 위한 Set
+        String cursor = "*"; // 커서 초기화
+
+
+        int retryCount = 0; // 누적 재시도 횟수
+
+        final int maxRetry = steamProps.review().maxRetry();
+        final long backoffBaseMs = steamProps.review().backoffBaseMs();
 
         while (collected.size() < quota) {
+
             try{
                 // 배치 단위 수집 요청 (num_per_page = 100)
                 // Caller를 통한 안전한 상세 리뷰 조회 (루프마다 RateLimiter 제어)
                 SteamReviewDetailResponse response = steamApiCaller.getReviewDetailSafe(appId, cursor, reviewType);
 
                 if (response == null || response.reviews() == null || response.reviews().isEmpty()) {
-                    break; // 더 이상 데이터가 없으면 중단
+                    break;
                 }
 
-                // 유용함 점수가 임계값 이상인 리뷰들만 선별
+                retryCount = 0; // 정상 응답 수신 시 재시도 카운트 초기화
+
+                // 정책 기준(유용함 점수, 최소 글자 수)을 만족하는 리뷰 필터링 (이미 수집된 ID는 제외)
                 List<SteamReviewDetailResponse.SteamReviewDetail> filtered = response.reviews().stream()
-                        .filter(r -> r.votesUp() >= minVotesUp)
+                        .filter(r -> r.votesUp() >= policy.minVotesUp())
+                        .filter(r -> r.reviewText() != null && r.reviewText().trim().length() >= policy.minLength())
+                        .filter(r -> !processedIds.contains(r.recommendationId()))
                         .toList();
 
-                // 목표 개수만큼만 잘라서 추가
+
+                // 할당량(Quota)에 맞춰 필요한 만큼만 추출하여 추가
                 int needed = quota - collected.size();
-                if (filtered.size() > needed) {
-                    collected.addAll(filtered.subList(0, needed));
-                } else {
-                    collected.addAll(filtered);
-                }
+                List<SteamReviewDetailResponse.SteamReviewDetail> toAdd =
+                        filtered.size() > needed ? filtered.subList(0, needed) : filtered;
 
-                // 커서 갱신
-                cursor = response.cursor();
+                collected.addAll(toAdd);
 
-                // 커서 무한루프 방지
-                if (cursor == null) break;
+                // 중복 방지를 위해 방금 수집된 리뷰들의 recommendationId 기록
+                toAdd.forEach(r -> processedIds.add(r.recommendationId()));
+
+                // 다음 페이지 탐색을 위한 커서 갱신 및 정체 확인
+                String nextCursor = response.cursor();
+                if (nextCursor == null || nextCursor.equals(cursor)) break;
+
+                cursor = nextCursor;
+
             }catch (Exception e) {
 
-                // 수집 성공한 리뷰들만 모아서 리턴
-                log.warn("Failed to fetch review page for AppID {} (Type: {}). Stopping collection. Reason: {}",
-                        appId, reviewType, e.getMessage());
+                // 복구 불가능한 예외 처리: 400, 404 등 논리적 오류 시 수집 즉시 중단
+                if (!isRecoverableException(e)) {
+                    log.error("Unrecoverable error for AppID {} (Type: {}). Reason: {}", appId, reviewType, e.getMessage());
+                    break;
+                }
 
-                break;
+                // 복구 가능한 예외(429 Rate Limit, Timeout 등) 발생 시 카운트 증가
+                retryCount++;
+
+                // 백오프(Backoff) 기반 재시도 로직 실행
+                if (retryCount <= maxRetry) {
+                    // 재시도 횟수에 비례하여 대기 시간 증가
+                    long backoffTime = backoffBaseMs* retryCount;
+                    log.warn("API Timeout or 429 detected for AppID {} (Cursor: {}). Retrying in {}ms... ({}/{})",
+                            appId, cursor, backoffTime, retryCount, maxRetry);
+
+                    try {
+                        Thread.sleep(backoffTime);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
+                } else {
+                    // 최대 재시도 횟수 초과 시 최종 실패 처리 및 루프 종료
+                    log.error("AppID {} ({}) Max retries exceeded. Stopping collection. Reason: {}", appId, reviewType, e.getMessage());
+                    break; // 5번 연속 실패 시에만 진짜 포기
+                }
             }
         }
 
@@ -239,14 +277,16 @@ public class SteamDataCollector {
     }
 
     /**
-     * 적응형 샘플링 계산 로직
-     * - 100개 미만: 전체 수집
-     * - 1000개 미만: 200개 샘플링
-     * - 1000개 초과: 500개 샘플링
+     * 재시도가 필요한 일시적 예외(429, 5xx, Timeout) 여부 판별
      */
-    private int calculateAdaptiveTarget(int total) {
-        if (total < 100) return total;
-        if (total < 1000) return 200;
-        return 500;
+    private boolean isRecoverableException(Exception e) {
+        String msg = e.getMessage() != null ? e.getMessage().toLowerCase() : "";
+
+        // steamApiCaller가 사용하는 HTTP 클라이언트(RestTemplate, WebClient 등)의
+        // 실제 예외 타입에 맞게 instanceof 검사를 추가하거나 메시지로 판별합니다.
+        return msg.contains("429") || msg.contains("500") || msg.contains("502")
+                || msg.contains("503") || msg.contains("504") || msg.contains("timeout")
+                || e instanceof java.net.SocketTimeoutException;
     }
+
 }

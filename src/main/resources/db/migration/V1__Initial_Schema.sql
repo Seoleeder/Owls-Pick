@@ -112,19 +112,21 @@ create table review
 
 create table review_stat
 (
-    review_score      integer,
-    total_negative    integer,
-    total_positive    integer,
-    total_review      integer,
-    created_at        timestamp(6),
-    game_id           bigint not null
+    game_id             bigint not null
         primary key
         constraint fk_review_stat_game_id
             references game,
-    updated_at        timestamp(6),
-    review_score_desc varchar(30),
-    weekly_review integer not null default 0,
-    review_summary text
+    review_score        integer,
+    review_score_desc   varchar(30),
+    total_negative      integer,
+    total_positive      integer,
+    total_review        integer,
+    weekly_review       integer not null default 0,
+    review_summary      text,
+    positive_keywords   text[],
+    negative_keywords   text[],
+    created_at          timestamp(6),
+    updated_at          timestamp(6)
 );
 
 create table screenshot

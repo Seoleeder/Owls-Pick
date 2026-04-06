@@ -22,7 +22,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/search")
-@Tag(name = "Game Search", description = "게임 통합 검색 및 필터링 API")
+@Tag(name = "게임 통합 검색 API", description = "게임 통합 검색 및 필터링 API")
 public class GameSearchController {
 
     private final GameSearchService gameSearchService;

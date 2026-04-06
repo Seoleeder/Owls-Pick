@@ -19,7 +19,9 @@ public record SteamProperties(
     public record Review(
             int minVotesUp,                 // 리뷰 최소 유용함 수
             int initBatchSize,              // 초기 데이터 수집용 배치
-            int maintenanceBatchSize        // 업데이트용 배치
+            int maintenanceBatchSize,       // 업데이트용 배치
+            int maxRetry,                   // 최대 재시도 횟수
+            long backoffBaseMs              // 기본 대기 시간 (ms)
     ) {}
     public record Dashboard(
             LocalDate minCollectionDate,    // 수집 시작 기준일 (2022-01-01)
