@@ -15,7 +15,9 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.util.UriComponentsBuilder;
 
+import java.net.URI;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -211,7 +213,10 @@ public class KeywordLocalizationService {
      * 한글화 엔진으로 HTTP 요청 전송 및 결과 반환
      */
     private KeywordLocalizationBulkResponse sendToAiEngine(KeywordLocalizationRequest request) {
-        String targetUri = genaiProperties.fastapiUrl() + "/api/localization/keywords";
+        URI targetUri = UriComponentsBuilder.fromUriString(genaiProperties.fastapiUrl())
+                .path("/api/localization/keywords")
+                .build()
+                .toUri();
 
         try {
             return localizationRestClient.post()

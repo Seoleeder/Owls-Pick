@@ -89,6 +89,7 @@ create table playtime
         primary key
         constraint fk_playtime_game_id
             references game,
+    sync_status varchar(20) not null default 'UNSYNCED',
     updated_at    timestamp(6)
 );
 

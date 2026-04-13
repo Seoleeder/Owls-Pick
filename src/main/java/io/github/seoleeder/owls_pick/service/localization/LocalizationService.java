@@ -13,7 +13,9 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.util.UriComponentsBuilder;
 
+import java.net.URI;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -125,13 +127,16 @@ public class LocalizationService {
     private LocalizationBulkResponse sendToAiEngine(BulkLocalizationRequest request) {
         log.info("Sending bulk localization request for {} games to AI Engine...", request.games().size());
 
-        String targetUri = genaiProperties.fastapiUrl() + "/api/localization/bulk";
+        URI targetUri = UriComponentsBuilder.fromUriString(genaiProperties.fastapiUrl())
+                .path("/api/localization/bulk")
+                .build()
+                .toUri();
 
         LocalizationBulkResponse response;
 
         try {
             response = localizationRestClient.post()
-                    .uri(targetUri) // 완성된 전체 URL 삽입
+                    .uri(targetUri)
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(request)
                     .retrieve()

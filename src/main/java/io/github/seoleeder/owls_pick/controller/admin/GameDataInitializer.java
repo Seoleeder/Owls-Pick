@@ -3,6 +3,7 @@ package io.github.seoleeder.owls_pick.controller.admin;
 import io.github.seoleeder.owls_pick.client.steam.SteamDataCollector;
 import io.github.seoleeder.owls_pick.global.response.CommonResponse;
 import io.github.seoleeder.owls_pick.service.ReviewSummaryService;
+import io.github.seoleeder.owls_pick.service.client.hltb.HltbSyncService;
 import io.github.seoleeder.owls_pick.service.localization.KeywordLocalizationService;
 import io.github.seoleeder.owls_pick.service.localization.LocalizationService;
 import io.github.seoleeder.owls_pick.service.client.igdb.IgdbSyncService;
@@ -39,11 +40,11 @@ public class GameDataInitializer {
     private final SteamReviewSyncService steamReviewService;
     private final IgdbSyncService igdbService;
     private final ItadSyncService itadService;
+    private final HltbSyncService hltbSyncService;
     private final LocalizationService localizationService;
     private final KeywordLocalizationService keywordLocalizationService;
     private final ReviewSummaryService reviewSummaryService;
 
-    private final SteamDataCollector steamDataCollector;
 
     @Operation(summary = "Steam 앱 리스트 초기화",
                 description = "Steam에 등록된 앱의 ID, 타이틀 수집",
@@ -129,60 +130,12 @@ public class GameDataInitializer {
                 steamReviewService.initAllReviews();
                 log.info("[Admin] Steam App Review Sync Completed!");
 
-//                // 리뷰 수집 완료 직후 요약 파이프라인 가동
-//                log.info("[Admin] Starting Automatic Review Summary Pipeline...");
-//                reviewSummaryService.runPipeline();
             } catch (Exception e) {
                 log.error("[Admin] Steam App Review Sync Failed", e);
             }
         });
 
         return CommonResponse.ok("Steam App Review Sync Started");
-    }
-
-    @Operation(summary = "단일 Steam 게임 리뷰 수집 테스트 (디버깅용)",
-            description = "특정 AppID에 대한 리뷰 수집을 동기식으로 실행하여 콘솔 로그에서 에러 원인을 즉각적으로 파악합니다.",
-            parameters = {
-                    @Parameter(name = "X-ADMIN-KEY", description = "관리자 키", required = true, in = ParameterIn.HEADER)
-            }
-    )
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "단일 리뷰 수집 테스트 실행 완료",
-                    content = @Content(mediaType = "application/json",
-                            examples = @ExampleObject(value = """
-                                    {
-                                      "success": true,
-                                      "data": "단일 테스트 완료. 콘솔 로그를 확인하세요.",
-                                      "error": null
-                                    }
-                                    """))),
-            @ApiResponse(responseCode = "401", description = "관리자 인증 실패",
-                    content = @Content(mediaType = "application/json",
-                            examples = @ExampleObject(value = """
-                                    {
-                                      "success": false,
-                                      "data": null,
-                                      "error": {
-                                        "code": 40100,
-                                        "message": "권한이 없습니다."
-                                      }
-                                    }
-                                    """)))
-    })
-    @PostMapping("/test-review/{appId}")
-    public CommonResponse<String> testSingleGameReview(@PathVariable Long appId) {
-        log.info("========== [Test] AppID {} 단일 리뷰 수집 시작 ==========", appId);
-
-        try {
-            // 비동기로 돌리지 않고, 로그를 바로 보기 위해 동기식(Blocking)으로 직접 호출합니다.
-            // 기존에 작성하신 collectRefinedReviews 메서드를 직접 찌릅니다.
-            steamDataCollector.collectRefinedReviews(appId); // (접근제어자에 따라 호출 방식은 맞춰주세요)
-            log.info("========== [Test] AppID {} 수집 성공 ==========", appId);
-        } catch (Exception e) {
-            log.error("========== [Test] AppID {} 수집 중 에러 발생! ==========", appId, e);
-        }
-
-        return CommonResponse.ok("단일 테스트 완료. 콘솔 로그를 확인하세요.");
     }
 
     @Operation(summary = "Steam 대시보드 데이터 초기화",
@@ -324,6 +277,21 @@ public class GameDataInitializer {
         return CommonResponse.ok("ITAD Sync Started");
     }
 
+    @Operation(summary = "HLTB 플레이타임 데이터 초기화", description = "FastAPI 서버를 통한 HowLongToBeat 플레이타임 데이터 동기화")
+    @PostMapping("/hltb")
+    public CommonResponse<String> initHltb() {
+        log.info("[Admin] HLTB Sync Requested.");
+        CompletableFuture.runAsync(() -> {
+            try {
+                hltbSyncService.runSyncPipeline();
+                log.info("[Admin] HLTB Sync Completed!");
+            } catch (Exception e) {
+                log.error("[Admin] HLTB Sync Failed", e);
+            }
+        });
+        return CommonResponse.ok("HLTB Sync Started");
+    }
+
     @Operation(summary = "전체 게임 데이터 구축",
             description = "스팀 앱 리스트 수집  -> IGDB, ITAD, 스팀 리뷰 및 대시보드 데이터 병렬 수집-> 수집 완료 직후 한글화 엔진 자동 가동",
             parameters = {
@@ -367,7 +335,7 @@ public class GameDataInitializer {
                 log.info("Completed!");
 
                 // 2. Parallel Execution
-                // IGDB 데이터 초기화 및 한글과 파이프라인 연동
+                // IGDB 데이터 초기화 및 한글화 파이프라인 연동
                 CompletableFuture<Void> futureIgdb = CompletableFuture.runAsync(() -> {
                     log.info("IGDB Sync Started");
                     igdbService.backfillAllGames();
