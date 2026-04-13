@@ -1,5 +1,6 @@
 package io.github.seoleeder.owls_pick.entity.game;
 
+import io.github.seoleeder.owls_pick.entity.game.enums.SyncStatus;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -30,11 +31,26 @@ public class Playtime {
     @Column
     private Integer completionist;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    @Builder.Default
+    private SyncStatus syncStatus = SyncStatus.UNSYNCED;
+
     @Column
     private LocalDateTime updatedAt;
 
     @PreUpdate // 수정 전 실행
     public void preUpdate() {
         this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * HLTB 스크래핑 결과 업데이트 로직
+     */
+    public void updateSyncResult(Integer mainStory, Integer mainExtras, Integer completionist, SyncStatus status) {
+        this.mainStory = mainStory;
+        this.mainExtras = mainExtras;
+        this.completionist = completionist;
+        this.syncStatus = status;
     }
 }

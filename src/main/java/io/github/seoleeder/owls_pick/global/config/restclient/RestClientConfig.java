@@ -69,4 +69,24 @@ public class RestClientConfig {
                 .requestInterceptor(loggingInterceptor)
                 .build();
     }
+
+    /**
+     * HLTB 플레이 타임 수집 전용 RestClient 빈
+     */
+    @Bean("hltbRestClient")
+    public RestClient hltbRestClient() {
+        HttpClient httpClient = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(5)) // 연결 시도 5초 제한
+                .build();
+
+        JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory(httpClient);
+
+        // 네트워크 지연 및 파싱 시간을 고려하여 응답 대기 90초 제한
+        factory.setReadTimeout(Duration.ofSeconds(90));
+
+        return RestClient.builder()
+                .requestFactory(factory)
+                .requestInterceptor(loggingInterceptor)
+                .build();
+    }
 }

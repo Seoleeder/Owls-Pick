@@ -15,7 +15,9 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
+import org.springframework.web.util.UriComponentsBuilder;
 
+import java.net.URI;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -172,11 +174,14 @@ public class ReviewSummaryService {
                 stat.getReviewScore(),
                 reviewTexts
         );
-        String targetUrl = props.fastapiUrl() + "/api/genai/summarize/reviews";
+        URI targetUri = UriComponentsBuilder.fromUriString(props.fastapiUrl())
+                .path("/api/genai/summarize/reviews")
+                .build()
+                .toUri();
 
         try {
             return restClient.post()
-                    .uri(targetUrl)
+                    .uri(targetUri)
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(requestDto)
                     .retrieve()

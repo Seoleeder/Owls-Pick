@@ -1,6 +1,7 @@
 package io.github.seoleeder.owls_pick.scheduler;
 
 import io.github.seoleeder.owls_pick.service.ReviewSummaryService;
+import io.github.seoleeder.owls_pick.service.client.hltb.HltbSyncService;
 import io.github.seoleeder.owls_pick.service.client.igdb.IgdbSyncService;
 import io.github.seoleeder.owls_pick.service.localization.KeywordLocalizationService;
 import io.github.seoleeder.owls_pick.service.localization.LocalizationService;
@@ -22,6 +23,7 @@ public class GameDataScheduler {
     private final SteamAppSyncService steamAppService;
     private final SteamDashboardSyncService steamDashboardService;
     private final SteamReviewSyncService steamReviewService;
+    private final HltbSyncService hltbSyncService;
     private final IgdbSyncService igdbService;
     private final ItadSyncService itadService;
     private final LocalizationService localizationService;
@@ -46,6 +48,9 @@ public class GameDataScheduler {
             steamReviewService.syncReviews();
 
             log.info("[Scheduler] Daily Full Sync Finished!");
+
+            // 4 HLTB PlaytimeData
+            triggerAsyncHltbPipeline();
 
             // 생성형 AI 파이프라인 실행 (한글화, 리뷰 요약)
             triggerAsyncGenaiPipeline();
@@ -94,6 +99,20 @@ public class GameDataScheduler {
         }).exceptionally(ex -> {
             log.error("[Scheduler] Daily Localization Pipeline Failed: {}", ex.getMessage());
             return null;
+        });
+    }
+
+    /**
+     * HLTB 플레이타임 데이터 동기화
+     */
+    private void triggerAsyncHltbPipeline() {
+        CompletableFuture.runAsync(() -> {
+            log.info("[Scheduler] Starting Daily HLTB Sync Pipeline...");
+            try {
+                hltbSyncService.runSyncPipeline();
+            } catch (Exception e) {
+                log.error("[Scheduler] Daily HLTB Sync Failed", e);
+            }
         });
     }
 
