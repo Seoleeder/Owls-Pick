@@ -7,7 +7,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public record GenaiProperties(
         String fastapiUrl,
         Localization localization,
-        Review review
+        Review review,
+        Embedding embedding
 ) {
     // 한글화 작업 관련 설정
     public record Localization(
@@ -23,6 +24,13 @@ public record GenaiProperties(
     public record Review(
             int minThreshold,
             int batchSize,
+            int maxConcurrentTasks
+    ) {}
+
+    // 벡터 임베딩 작업 관련 설정
+    public record Embedding(
+            int dbFetchSize,
+            int apiBatchSize,
             int maxConcurrentTasks
     ) {}
 }

@@ -3,7 +3,7 @@ package io.github.seoleeder.owls_pick.service.client.hltb;
 import io.github.seoleeder.owls_pick.dto.response.HltbSyncResponse;
 import io.github.seoleeder.owls_pick.entity.game.Game;
 import io.github.seoleeder.owls_pick.entity.game.Playtime;
-import io.github.seoleeder.owls_pick.entity.game.enums.SyncStatus;
+import io.github.seoleeder.owls_pick.entity.game.enums.status.SyncStatus;
 import io.github.seoleeder.owls_pick.global.config.properties.HltbProperties;
 import io.github.seoleeder.owls_pick.global.response.CustomException;
 import io.github.seoleeder.owls_pick.global.response.ErrorCode;

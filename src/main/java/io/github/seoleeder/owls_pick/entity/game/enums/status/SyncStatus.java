@@ -1,4 +1,4 @@
-package io.github.seoleeder.owls_pick.entity.game.enums;
+package io.github.seoleeder.owls_pick.entity.game.enums.status;
 
 public enum SyncStatus {
     UNSYNCED,    // 동기화 전

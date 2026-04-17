@@ -17,7 +17,7 @@ services:
     restart: always
 
   redis:
-    image: redis:alpine
+    image: redis:bookworm
     container_name: owls-pick-redis
     ports:
       - "6379:6379"

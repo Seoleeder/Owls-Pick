@@ -1,4 +1,4 @@
-package io.github.seoleeder.owls_pick.service.localization;
+package io.github.seoleeder.owls_pick.service.genai.localization;
 
 import io.github.seoleeder.owls_pick.dto.request.KeywordLocalizationRequest;
 import io.github.seoleeder.owls_pick.dto.response.KeywordLocalizationBulkResponse;
@@ -59,15 +59,16 @@ public class KeywordLocalizationService {
     public int runPipeline(int chunkSize, boolean isSingleRun) {
         log.info("Starting Keyword Localization Pipeline with chunk size {}...", chunkSize);
 
+        // 신규 영문 키워드 추출 및 사전 등록
         extractNewKeywords();
 
+        // 영문 키워드를 청크 단위로 분할하여 한글화 실행
         int processedCount = processUnlocalizedKeywords(chunkSize, isSingleRun);
-        // 1개 이상 처리되었을 때만 태그 반영
-        if (processedCount > 0) {
-            applyLocalizationsToTags();
-        }
 
-        log.info("Keyword Localization Pipeline Completed. Processed: {}", processedCount);
+        // 한글화된 키워드 동기화
+        int mappedTagCount = applyLocalizationsToTags(chunkSize);
+
+        log.info("Keyword Localization Pipeline Completed. AI Translated: {}, Tags Mapped: {}", processedCount, mappedTagCount);
         return processedCount;
     }
 
@@ -169,30 +170,47 @@ public class KeywordLocalizationService {
     /**
      * 한글화가 완료된 키워드 사전을 가지고 Tag의 한글 키워드 배열(keywordsKo) 업데이트
      */
-    private void applyLocalizationsToTags() {
-        transactionTemplate.executeWithoutResult(status -> {
-            Map<String, String> dictionaryMap = dictionaryRepository.findAll().stream()
-                    .filter(dict -> dict.getKorName() != null)
-                    .collect(Collectors.toMap(
-                            KeywordDictionary::getEngName,
-                            KeywordDictionary::getKorName
-                    ));
+    private int applyLocalizationsToTags(int chunkSize) {
 
-            if (dictionaryMap.isEmpty()) return;
+        // 한글화 완료된 키워드 사전 데이터를 Map으로 로드
+        Map<String, String> dictionaryMap = dictionaryRepository.findAll().stream()
+                .filter(dict -> dict.getKorName() != null)
+                .collect(Collectors.toMap(
+                        KeywordDictionary::getEngName,
+                        KeywordDictionary::getKorName
+                ));
 
-            List<Tag> targetTags = tagRepository.findTagsNeedingKeywordLocalization();
-            int successCount = 0;
+        if (dictionaryMap.isEmpty()) {
+            return 0;
+        }
 
-            for (Tag tag : targetTags) {
-                List<String> localizedKeywords = tag.getKeywords().stream()
-                        .map(eng -> dictionaryMap.getOrDefault(eng, eng))
-                        .toList();
+        int totalMapped = 0;
 
-                tag.updateKeywordsKo(localizedKeywords);
-                successCount++;
+        // 대용량 Tag 엔티티 청크 단위 조회 및 처리 루프
+        while (true) {
+
+            // 업데이트가 필요한 Tag 엔티티를 청크만큼 조회
+            List<Tag> targetTags = tagRepository.findTagsNeedingKeywordLocalization(chunkSize);
+            if (targetTags.isEmpty()) {
+                break; // 더 이상 업데이트할 태그가 없으면 종료
             }
-            log.info("Successfully applied translated keywords to {} tags.", successCount);
-        });
+
+            // 영문 키워드를 한글 사전과 매핑하여 태그 업데이트
+            transactionTemplate.executeWithoutResult(status -> {
+                for (Tag tag : targetTags) {
+                    List<String> localizedKeywords = tag.getKeywords().stream()
+                            .map(eng -> dictionaryMap.getOrDefault(eng, eng))
+                            .toList();
+
+                    tag.updateKeywordsKo(localizedKeywords);
+                }
+            });
+
+            totalMapped += targetTags.size();
+            log.info("Successfully applied translated keywords to {} tags. (Total: {})", targetTags.size(), totalMapped);
+        }
+
+        return totalMapped;
     }
 
     // ---------------------------------------------------------------------------------

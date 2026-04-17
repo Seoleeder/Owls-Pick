@@ -1,11 +1,10 @@
 package io.github.seoleeder.owls_pick.controller.admin;
 
-import io.github.seoleeder.owls_pick.client.steam.SteamDataCollector;
 import io.github.seoleeder.owls_pick.global.response.CommonResponse;
-import io.github.seoleeder.owls_pick.service.ReviewSummaryService;
+import io.github.seoleeder.owls_pick.service.genai.ReviewSummaryService;
 import io.github.seoleeder.owls_pick.service.client.hltb.HltbSyncService;
-import io.github.seoleeder.owls_pick.service.localization.KeywordLocalizationService;
-import io.github.seoleeder.owls_pick.service.localization.LocalizationService;
+import io.github.seoleeder.owls_pick.service.genai.localization.KeywordLocalizationService;
+import io.github.seoleeder.owls_pick.service.genai.localization.LocalizationService;
 import io.github.seoleeder.owls_pick.service.client.igdb.IgdbSyncService;
 import io.github.seoleeder.owls_pick.service.client.itad.ItadSyncService;
 import io.github.seoleeder.owls_pick.service.client.steam.SteamAppSyncService;
@@ -22,7 +21,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;

@@ -2,9 +2,9 @@ package io.github.seoleeder.owls_pick.repository.Impl;
 
 import com.querydsl.core.Tuple;
 import com.querydsl.core.types.Projections;
-import com.querydsl.core.types.dsl.Expressions;
 import com.querydsl.jpa.impl.JPAQuery;
 import com.querydsl.jpa.impl.JPAQueryFactory;
+import io.github.seoleeder.owls_pick.dto.request.EmbeddingBatchRequest;
 import io.github.seoleeder.owls_pick.dto.request.GameSearchConditionRequest;
 import io.github.seoleeder.owls_pick.dto.response.SearchFilterMetadataResponse;
 import io.github.seoleeder.owls_pick.entity.game.Game;
@@ -14,7 +14,9 @@ import io.github.seoleeder.owls_pick.repository.dto.GameDetailCoreDto;
 import io.github.seoleeder.owls_pick.repository.dto.GameWithReviewStatDto;
 import io.github.seoleeder.owls_pick.entity.game.enums.GenreType;
 import io.github.seoleeder.owls_pick.entity.game.enums.ThemeType;
+import io.github.seoleeder.owls_pick.repository.support.EmbeddingExpressions;
 import io.github.seoleeder.owls_pick.repository.support.GameExpressions;
+import io.github.seoleeder.owls_pick.repository.support.LocalizationExpressions;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -30,12 +32,15 @@ import static io.github.seoleeder.owls_pick.entity.game.QPlaytime.playtime;
 import static io.github.seoleeder.owls_pick.entity.game.QReviewStat.reviewStat;
 import static io.github.seoleeder.owls_pick.entity.game.QStoreDetail.storeDetail;
 import static io.github.seoleeder.owls_pick.entity.game.QTag.tag;
+import static io.github.seoleeder.owls_pick.entity.game.QVectorEmbedding.vectorEmbedding;
 
 @RequiredArgsConstructor
 public class GameRepositoryImpl implements GameRepositoryCustom {
 
     private final JPAQueryFactory queryFactory;
     private final GameExpressions gameExpressions;
+    private final LocalizationExpressions localizationExpressions;
+    private final EmbeddingExpressions embeddingExpressions;
 
 
     /* 공통 쿼리 메서드 */
@@ -505,13 +510,62 @@ public class GameRepositoryImpl implements GameRepositoryCustom {
         return queryFactory
                 .selectFrom(game)
                 .where(
-                        gameExpressions.needsDescriptionLocalization(game)
-                                .or(gameExpressions.needsStorylineLocalization(game))
+                        localizationExpressions.needsDescriptionLocalization(game)
+                                .or(localizationExpressions.needsStorylineLocalization(game))
                 )
                 .orderBy(game.id.asc())
                 .limit(limit)
                 .fetch();
     }
 
+    /**
+     * 임베딩 데이터가 존재하지 않는 게임 원본 데이터 조회
+     * */
+    @Override
+    public List<EmbeddingBatchRequest.RawGameData> findGamesForEmbedding(int dbFetchSize) {
+        return queryFactory
+                // 임베딩 데이터 프로젝션 (Fallback용 영문 필드 포함)
+                .select(
+                        game.id,
+                        game.title,
+                        game.description,
+                        game.descriptionKo,
+                        tag.genres,
+                        tag.themes,
+                        tag.keywords,
+                        tag.keywordsKo,
+                        playtime.mainStory,
+                        reviewStat.reviewScoreDesc,
+                        reviewStat.reviewSummary
+                )
+                .from(game)
+                // 태그, 리뷰 스탯, 플레이타임 엔티티 조인
+                .innerJoin(tag).on(tag.game.id.eq(game.id))
+                .innerJoin(reviewStat).on(reviewStat.game.id.eq(game.id))
+                .leftJoin(playtime).on(playtime.game.id.eq(game.id))    // Nullable 필드
+                .leftJoin(vectorEmbedding).on(vectorEmbedding.game.id.eq(game.id))
+                .where(
+                        embeddingExpressions.isValidForEmbedding(),      // 임베딩 필수 데이터 검증
+                        vectorEmbedding.isNull()
+                )
+                .orderBy(game.id.asc())
+                .limit(dbFetchSize)
+                .fetch().stream()
+                // DTO 매핑 및 Fallback 처리 (한글 데이터 우선)
+                .map(tuple -> EmbeddingBatchRequest.RawGameData.of(
+                        tuple.get(game.id),
+                        tuple.get(game.title),
+                        tuple.get(game.description),
+                        tuple.get(game.descriptionKo),
+                        tuple.get(tag.genres),
+                        tuple.get(tag.themes),
+                        tuple.get(tag.keywords),
+                        tuple.get(tag.keywordsKo),
+                        tuple.get(playtime.mainStory),
+                        tuple.get(reviewStat.reviewScoreDesc),
+                        tuple.get(reviewStat.reviewSummary)
+                ))
+                .toList();
+    }
 
 }

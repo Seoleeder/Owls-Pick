@@ -1,4 +1,4 @@
-package io.github.seoleeder.owls_pick.service.localization;
+package io.github.seoleeder.owls_pick.service.genai.localization;
 
 import io.github.seoleeder.owls_pick.dto.request.BulkLocalizationRequest;
 import io.github.seoleeder.owls_pick.dto.response.LocalizationBulkResponse;
