@@ -8,5 +8,5 @@ public interface TagRepositoryCustom {
     List<String> findAllDistinctKeywords();
 
     // 한글 키워드(keywordsKo) 업데이트가 필요한 태그 목록 조회
-    List<Tag> findTagsNeedingKeywordLocalization();
+    List<Tag> findTagsNeedingKeywordLocalization(int chunkSize);
 }

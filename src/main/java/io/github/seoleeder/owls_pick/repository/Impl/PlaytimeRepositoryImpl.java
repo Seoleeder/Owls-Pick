@@ -2,7 +2,7 @@ package io.github.seoleeder.owls_pick.repository.Impl;
 
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import io.github.seoleeder.owls_pick.entity.game.Game;
-import io.github.seoleeder.owls_pick.entity.game.enums.SyncStatus;
+import io.github.seoleeder.owls_pick.entity.game.enums.status.SyncStatus;
 import io.github.seoleeder.owls_pick.repository.Custom.PlaytimeRepositoryCustom;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;

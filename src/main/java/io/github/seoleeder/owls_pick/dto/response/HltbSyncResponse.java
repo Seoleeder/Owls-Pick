@@ -1,6 +1,6 @@
 package io.github.seoleeder.owls_pick.dto.response;
 
-import io.github.seoleeder.owls_pick.entity.game.enums.SyncStatus;
+import io.github.seoleeder.owls_pick.entity.game.enums.status.SyncStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 

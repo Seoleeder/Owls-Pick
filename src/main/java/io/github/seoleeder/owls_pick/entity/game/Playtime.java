@@ -1,6 +1,6 @@
 package io.github.seoleeder.owls_pick.entity.game;
 
-import io.github.seoleeder.owls_pick.entity.game.enums.SyncStatus;
+import io.github.seoleeder.owls_pick.entity.game.enums.status.SyncStatus;
 import jakarta.persistence.*;
 import lombok.*;
 

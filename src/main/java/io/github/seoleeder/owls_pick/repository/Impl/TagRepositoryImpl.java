@@ -6,6 +6,7 @@ import com.querydsl.jpa.impl.JPAQueryFactory;
 import io.github.seoleeder.owls_pick.entity.game.Tag;
 import io.github.seoleeder.owls_pick.repository.Custom.TagRepositoryCustom;
 import io.github.seoleeder.owls_pick.repository.support.GameExpressions;
+import io.github.seoleeder.owls_pick.repository.support.LocalizationExpressions;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
@@ -17,7 +18,7 @@ import static io.github.seoleeder.owls_pick.entity.game.QTag.tag;
 @RequiredArgsConstructor
 public class TagRepositoryImpl implements TagRepositoryCustom {
     private final JPAQueryFactory queryFactory;
-    private final GameExpressions gameExpressions;
+    private final LocalizationExpressions localizationExpressions;
 
     /**
      * KeywordDictionary 동기화를 위한 고유 영문 키워드 목록 추출
@@ -30,7 +31,7 @@ public class TagRepositoryImpl implements TagRepositoryCustom {
 
         return queryFactory.select(unnestKeywords)
                 .from(tag)
-                .where(gameExpressions.hasKeywords())
+                .where(localizationExpressions.hasKeywords())
                 .distinct()
                 .fetch();
     }
@@ -39,9 +40,10 @@ public class TagRepositoryImpl implements TagRepositoryCustom {
      * 한글 키워드(keywords_ko) 업데이트가 필요한 태그 목록 조회
      */
     @Override
-    public List<Tag> findTagsNeedingKeywordLocalization() {
+    public List<Tag> findTagsNeedingKeywordLocalization(int chunkSize) {
         return queryFactory.selectFrom(tag)
-                .where(gameExpressions.needsKeywordLocalization())
+                .where(localizationExpressions.needsKeywordLocalization())
+                .limit(chunkSize)
                 .fetch();
     }
 }

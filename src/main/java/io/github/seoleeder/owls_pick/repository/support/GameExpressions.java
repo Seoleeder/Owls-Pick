@@ -1,11 +1,7 @@
 package io.github.seoleeder.owls_pick.repository.support;
 
 import com.querydsl.core.types.OrderSpecifier;
-import com.querydsl.core.types.dsl.BooleanExpression;
-import com.querydsl.core.types.dsl.CaseBuilder;
-import com.querydsl.core.types.dsl.Expressions;
-import com.querydsl.core.types.dsl.NumberExpression;
-import io.github.seoleeder.owls_pick.entity.game.QGame;
+import com.querydsl.core.types.dsl.*;
 import io.github.seoleeder.owls_pick.entity.game.enums.GameSortType;
 import io.github.seoleeder.owls_pick.entity.game.enums.GenreType;
 import io.github.seoleeder.owls_pick.entity.game.enums.ThemeType;
@@ -33,7 +29,8 @@ public class GameExpressions {
 
     /**
      * 현재 시각 기준으로 출시된 게임들만 필터링
-     * */
+     *
+     */
     public BooleanExpression isReleased() {
 
         // 오늘 기준으로 하루 전(-1일)까지만 '확실히 출시된 게임'으로 간주
@@ -49,7 +46,6 @@ public class GameExpressions {
     public BooleanExpression isDiscounting(Boolean isDiscounting) {
         return Boolean.TRUE.equals(isDiscounting) ? storeDetail.discountRate.gt(0) : null;
     }
-
 
 
     // --- 수치 및 범위 필터 ---
@@ -101,8 +97,9 @@ public class GameExpressions {
     // --- 태그 및 배열 연산 필터 (PostgreSQL 연산자 활용)---
 
     /**
-     *  해당 게임의 genre 배열에 해당 장르가 포함되어 있는지 확인
-     * */
+     * 해당 게임의 genre 배열에 해당 장르가 포함되어 있는지 확인
+     *
+     */
     public BooleanExpression containsGenre(GenreType genre) {
         if (genre == null) return null;
         // {0} = tag.genres (DB 컬럼, text[])
@@ -112,8 +109,9 @@ public class GameExpressions {
     }
 
     /**
-     *  해당 게임의 theme 배열에 해당 테마가 포함되어 있는지 확인
-     * */
+     * 해당 게임의 theme 배열에 해당 테마가 포함되어 있는지 확인
+     *
+     */
     public BooleanExpression containsTheme(ThemeType theme) {
         if (theme == null) return null;
         return Expressions.booleanTemplate("function('array_contains', {0}, {1}) = true", tag.themes, theme.getEngName());
@@ -121,7 +119,8 @@ public class GameExpressions {
 
     /**
      * 해당 태그 이름이 장르나 테아메 포함되어 있는지 확인
-     * */
+     *
+     */
     public BooleanExpression containsTag(String tagName) {
         if (!StringUtils.hasText(tagName)) return null;
         return Expressions.booleanTemplate("function('array_contains', {0}, {1}) = true", tag.genres, tagName)
@@ -151,16 +150,18 @@ public class GameExpressions {
     }
 
     /**
-     *  태그가 하나라도 겹치는지 확인 (Overlap)
-     * */
+     * 태그가 하나라도 겹치는지 확인 (Overlap)
+     *
+     */
     public BooleanExpression tagsOverlap(String[] tags) {
         return Expressions.booleanTemplate("function('array_overlap', {0}, {1}) = true", tag.genres, tags)
                 .or(Expressions.booleanTemplate("function('array_overlap', {0}, {1}) = true", tag.themes, tags));
     }
 
     /**
-     *  태그 교집합 점수 계산 (장르 교집합 + 테마 교집합 개수)
-     * */
+     * 태그 교집합 점수 계산 (장르 교집합 + 테마 교집합 개수)
+     *
+     */
     public NumberExpression<Integer> calculateTagMatchScore(String[] tags) {
         return Expressions.numberTemplate(Integer.class,
                 "cardinality(array(select unnest({0}) intersect select unnest({1}))) + " +
@@ -208,51 +209,5 @@ public class GameExpressions {
         specifiers.add(game.id.desc());
 
         return specifiers.toArray(new OrderSpecifier[0]);
-    }
-
-
-    // --- 게임 데이터 한글화 ---
-
-    /**
-     * 설명(Description) 한글화가 필요한지 여부 반환
-     * (원본 영문 설명은 존재하나, 한글화된 데이터가 X)
-     */
-    public BooleanExpression needsDescriptionLocalization(QGame game) {
-        BooleanExpression hasOriginal = game.description.isNotNull().and(game.description.isNotEmpty());
-        BooleanExpression isNotTranslated = game.descriptionKo.isNull().or(game.descriptionKo.isEmpty());
-        return hasOriginal.and(isNotTranslated);
-    }
-
-    /**
-     * 스토리라인(Storyline) 한글화가 필요한지 여부 반환
-     * (원본 영문 스토리라인은 존재하나, 한글화된 데이터가 X)
-     */
-    public BooleanExpression needsStorylineLocalization(QGame game) {
-        BooleanExpression hasOriginal = game.storyline.isNotNull().and(game.storyline.isNotEmpty());
-        BooleanExpression isNotTranslated = game.storylineKo.isNull().or(game.storylineKo.isEmpty());
-        return hasOriginal.and(isNotTranslated);
-    }
-
-    /**
-     * 영문 키워드(keywords) 배열에 데이터가 존재하는지 확인
-     * (PostgreSQL Array 타입의 isEmpty() 에러 방지를 위해 cardinality 네이티브 함수 사용)
-     */
-    public BooleanExpression hasKeywords() {
-        return Expressions.booleanTemplate("function('cardinality', {0}) > 0", tag.keywords);
-    }
-
-    /**
-     * 한글 키워드(keywordsKo) 배열이 비어있거나 null인지 확인
-     */
-    public BooleanExpression isKeywordsKoEmpty() {
-        return Expressions.booleanTemplate("function('cardinality', {0}) = 0", tag.keywordsKo);
-    }
-
-    /**
-     * 키워드(Tag Keywords) 한글화가 필요한지 여부 반환
-     * (원본 영문 키워드는 존재하나, 한글 키워드 배열이 비어있는 경우)
-     */
-    public BooleanExpression needsKeywordLocalization() {
-        return hasKeywords().and(isKeywordsKoEmpty());
     }
 }

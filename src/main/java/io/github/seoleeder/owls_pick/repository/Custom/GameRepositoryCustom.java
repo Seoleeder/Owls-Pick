@@ -1,5 +1,6 @@
 package io.github.seoleeder.owls_pick.repository.Custom;
 
+import io.github.seoleeder.owls_pick.dto.request.EmbeddingBatchRequest;
 import io.github.seoleeder.owls_pick.dto.request.GameSearchConditionRequest;
 import io.github.seoleeder.owls_pick.dto.response.SearchFilterMetadataResponse;
 import io.github.seoleeder.owls_pick.entity.game.Game;
@@ -75,8 +76,13 @@ public interface GameRepositoryCustom {
     Optional<GameDetailCoreDto> findGameDetailCoreById(Long gameId);
 
 
-    // --- 게임 데이터 번역 ---
+    // --- 게임 데이터 한글화 ---
 
     // 한글화가 필요한 게임을 지정된 limit만큼 조회
     List<Game> findUnlocalizedGames(int limit);
+
+    // --- 벡터 임베딩 ---
+
+    // 벡터 임베팅이 필요한 게임 조회
+    List<EmbeddingBatchRequest.RawGameData> findGamesForEmbedding(int dbFetchSize);
 }

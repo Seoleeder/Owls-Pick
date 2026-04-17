@@ -1,4 +1,4 @@
-package io.github.seoleeder.owls_pick.service;
+package io.github.seoleeder.owls_pick.service.genai;
 
 import io.github.seoleeder.owls_pick.dto.request.ReviewSummaryRequest;
 import io.github.seoleeder.owls_pick.dto.response.ReviewSummaryResponse;

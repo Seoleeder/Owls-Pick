@@ -1,8 +1,8 @@
 package io.github.seoleeder.owls_pick.controller.admin;
 
 import io.github.seoleeder.owls_pick.global.response.CommonResponse;
-import io.github.seoleeder.owls_pick.service.localization.KeywordLocalizationService;
-import io.github.seoleeder.owls_pick.service.localization.LocalizationService;
+import io.github.seoleeder.owls_pick.service.genai.localization.KeywordLocalizationService;
+import io.github.seoleeder.owls_pick.service.genai.localization.LocalizationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;

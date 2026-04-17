@@ -65,6 +65,9 @@ dependencies {
 	// Redis
 	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
 
+	// pgvector
+	implementation 'org.hibernate.orm:hibernate-vector:6.6.48.Final'
+
 	annotationProcessor "org.springframework.boot:spring-boot-configuration-processor"
 	compileOnly 'org.projectlombok:lombok'
 	runtimeOnly 'org.postgresql:postgresql'

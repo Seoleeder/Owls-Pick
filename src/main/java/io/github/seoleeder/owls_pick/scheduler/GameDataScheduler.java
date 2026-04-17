@@ -1,10 +1,10 @@
 package io.github.seoleeder.owls_pick.scheduler;
 
-import io.github.seoleeder.owls_pick.service.ReviewSummaryService;
+import io.github.seoleeder.owls_pick.service.genai.ReviewSummaryService;
 import io.github.seoleeder.owls_pick.service.client.hltb.HltbSyncService;
 import io.github.seoleeder.owls_pick.service.client.igdb.IgdbSyncService;
-import io.github.seoleeder.owls_pick.service.localization.KeywordLocalizationService;
-import io.github.seoleeder.owls_pick.service.localization.LocalizationService;
+import io.github.seoleeder.owls_pick.service.genai.localization.KeywordLocalizationService;
+import io.github.seoleeder.owls_pick.service.genai.localization.LocalizationService;
 import io.github.seoleeder.owls_pick.service.client.itad.ItadSyncService;
 import io.github.seoleeder.owls_pick.service.client.steam.SteamAppSyncService;
 import io.github.seoleeder.owls_pick.service.client.steam.SteamDashboardSyncService;
