@@ -216,7 +216,7 @@ create table chat_message
             references chat_session,
     chat_role  varchar(255) not null
         constraint chat_message_chat_role_check
-            check ((chat_role)::text = ANY ((ARRAY ['User'::character varying, 'CHATBOT'::character varying])::text[])),
+            check ((chat_role)::text = ANY ((ARRAY ['USER'::character varying, 'ASSISTANT'::character varying])::text[])),
     content    text
 );
 

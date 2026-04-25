@@ -4,7 +4,7 @@ import com.querydsl.core.Tuple;
 import com.querydsl.core.types.Projections;
 import com.querydsl.jpa.impl.JPAQuery;
 import com.querydsl.jpa.impl.JPAQueryFactory;
-import io.github.seoleeder.owls_pick.dto.request.EmbeddingBatchRequest;
+import io.github.seoleeder.owls_pick.dto.embedding.EmbeddingSourceDto;
 import io.github.seoleeder.owls_pick.dto.request.GameSearchConditionRequest;
 import io.github.seoleeder.owls_pick.dto.response.SearchFilterMetadataResponse;
 import io.github.seoleeder.owls_pick.entity.game.Game;
@@ -520,9 +520,10 @@ public class GameRepositoryImpl implements GameRepositoryCustom {
 
     /**
      * 임베딩 데이터가 존재하지 않는 게임 원본 데이터 조회
-     * */
+     *
+     */
     @Override
-    public List<EmbeddingBatchRequest.RawGameData> findGamesForEmbedding(int dbFetchSize) {
+    public List<EmbeddingSourceDto> findGamesForEmbedding(int dbFetchSize) {
         return queryFactory
                 // 임베딩 데이터 프로젝션 (Fallback용 영문 필드 포함)
                 .select(
@@ -552,7 +553,7 @@ public class GameRepositoryImpl implements GameRepositoryCustom {
                 .limit(dbFetchSize)
                 .fetch().stream()
                 // DTO 매핑 및 Fallback 처리 (한글 데이터 우선)
-                .map(tuple -> EmbeddingBatchRequest.RawGameData.of(
+                .map(tuple -> EmbeddingSourceDto.of(
                         tuple.get(game.id),
                         tuple.get(game.title),
                         tuple.get(game.description),

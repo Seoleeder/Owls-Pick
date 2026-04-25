@@ -1,6 +1,7 @@
 package io.github.seoleeder.owls_pick.service.genai;
 
-import io.github.seoleeder.owls_pick.dto.request.EmbeddingBatchRequest;
+import io.github.seoleeder.owls_pick.dto.embedding.EmbeddingBatchRequest;
+import io.github.seoleeder.owls_pick.dto.embedding.EmbeddingSourceDto;
 import io.github.seoleeder.owls_pick.dto.response.EmbeddingBatchResponse;
 import io.github.seoleeder.owls_pick.entity.game.Game;
 import io.github.seoleeder.owls_pick.entity.game.VectorEmbedding;
@@ -107,7 +108,7 @@ public class EmbeddingService {
     public int processDataChunk(int dbFetchSize) {
 
         // 임베딩 벡터가 없는 게임들의 원본 데이터 조회
-        List<EmbeddingBatchRequest.RawGameData> rawDataList = gameRepository.findGamesForEmbedding(dbFetchSize);
+        List<EmbeddingSourceDto> rawDataList = gameRepository.findGamesForEmbedding(dbFetchSize);
         if (rawDataList.isEmpty()) {
             return 0;
         }
@@ -116,7 +117,7 @@ public class EmbeddingService {
 
         // 설정된 배치 사이즈에 맞춰 소그룹으로 분할
         int apiBatchSize = props.embedding().apiBatchSize();
-        List<List<EmbeddingBatchRequest.RawGameData>> partitions = partitionList(rawDataList, apiBatchSize);
+        List<List<EmbeddingSourceDto>> partitions = partitionList(rawDataList, apiBatchSize);
 
         // 분할된 그룹별로 비동기 병렬 처리
         List<CompletableFuture<Void>> futures = partitions.stream()
@@ -139,19 +140,25 @@ public class EmbeddingService {
     /**
      * 분할된 단일 배치 데이터의 FastAPI 전송 및 응답 DB 저장 수행
      */
-    private void processSingleBatch(List<EmbeddingBatchRequest.RawGameData> batch) {
-        EmbeddingBatchResponse response = requestEmbeddingToFastApi(batch);
+    private void processSingleBatch(List<EmbeddingSourceDto> batch) {
+        // 임베딩 추출에 불필요한 리뷰 데이터를 제외하고 통신용 DTO로 변환
+        List<EmbeddingBatchRequest.GameEmbeddingData> requestData = batch.stream()
+                .map(EmbeddingBatchRequest.GameEmbeddingData::from)
+                .toList();
+
+        EmbeddingBatchResponse response = requestEmbeddingToFastApi(requestData);
 
         if (isValidResponse(response)) {
-            applyEmbeddingResult(response);
+            // FastAPI 응답과 원본 데이터를 함께 전달
+            applyEmbeddingResult(response, batch);
         }
     }
 
     /**
      * FastAPI 서버에 벡터 임베딩 변환 요청 및 응답 반환
      */
-    private EmbeddingBatchResponse requestEmbeddingToFastApi(List<EmbeddingBatchRequest.RawGameData> batch) {
-        EmbeddingBatchRequest requestDto = new EmbeddingBatchRequest(batch);
+    private EmbeddingBatchResponse requestEmbeddingToFastApi(List<EmbeddingBatchRequest.GameEmbeddingData> batchData) {
+        EmbeddingBatchRequest requestDto = new EmbeddingBatchRequest(batchData);
         URI targetUri = UriComponentsBuilder.fromUriString(props.fastapiUrl())
                 .path("api/genai/embeddings/batch")
                 .build()
@@ -184,12 +191,16 @@ public class EmbeddingService {
     /**
      * 변환 완료된 임베딩 벡터 데이터 일괄 저장 (Upsert 처리)
      */
-    public void applyEmbeddingResult(EmbeddingBatchResponse response) {
+    public void applyEmbeddingResult(EmbeddingBatchResponse response, List<EmbeddingSourceDto> batch) {
 
         // Bulk 조회를 위한 식별자 목록 추출
         List<Long> gameIds = response.results().stream()
                 .map(EmbeddingBatchResponse.EmbeddedGame::gameId)
                 .toList();
+
+        // 응답받은 GameId와 원본 데이터를 1:1 매핑
+        Map<Long, EmbeddingSourceDto> sourceDataMap = batch.stream()
+                .collect(Collectors.toMap(EmbeddingSourceDto::gameId, data -> data));
 
         // 내부 트랜잭션 생성 및 데이터 저장 처리
         Integer savedCount = transactionTemplate.execute(status -> {
@@ -215,10 +226,14 @@ public class EmbeddingService {
             for (EmbeddingBatchResponse.EmbeddedGame result : response.results()) {
                 float[] vector = result.status() == EmbeddingStatus.SUCCESS ? result.vector() : null;
 
+                // 응답받은 벡터와 내부 데이터를 활용해 최종 텍스트 생성
+                EmbeddingSourceDto source = sourceDataMap.get(result.gameId());
+                String sourceText = source.toFinalSourceText();
+
                 if (existingEmbeddings.containsKey(result.gameId())) {
                     // 기존 데이터 갱신
                     VectorEmbedding existing = existingEmbeddings.get(result.gameId());
-                    existing.updateEmbeddingData(vector, result.status(), result.sourceText());
+                    existing.updateEmbeddingData(vector, result.status(), sourceText);
                     embeddingsToSave.add(existing);
                 } else if (newGamesMap.containsKey(result.gameId())) {
                     // 신규 엔티티 생성 및 매핑
@@ -226,7 +241,7 @@ public class EmbeddingService {
                             .game(newGamesMap.get(result.gameId()))
                             .embedding(vector)
                             .embeddingStatus(result.status())
-                            .sourceText(result.sourceText())
+                            .sourceText(sourceText)
                             .build());
                 }
             }

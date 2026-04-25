@@ -8,7 +8,8 @@ public record GenaiProperties(
         String fastapiUrl,
         Localization localization,
         Review review,
-        Embedding embedding
+        Embedding embedding,
+        Chat chat
 ) {
     // 한글화 작업 관련 설정
     public record Localization(
@@ -33,4 +34,9 @@ public record GenaiProperties(
             int apiBatchSize,
             int maxConcurrentTasks
     ) {}
+
+    // RAG 기반 Owls 챗봇 관련 설정
+    public record Chat(
+            int historyLimit
+    ){}
 }

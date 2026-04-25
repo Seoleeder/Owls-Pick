@@ -33,7 +33,7 @@ public class RestClientConfig {
     }
 
     /**
-     * GEMINI 한글화 엔진(FastAPI) 전용 RestClient 빈
+     * Vertex 엔진(한글화, 리뷰 요약, 벡터 임베딩) 전용 RestClient 빈
      */
     @Bean("genaiRestClient")
     public RestClient genaiRestClient() {
@@ -83,6 +83,22 @@ public class RestClientConfig {
 
         // 네트워크 지연 및 파싱 시간을 고려하여 응답 대기 90초 제한
         factory.setReadTimeout(Duration.ofSeconds(90));
+
+        return RestClient.builder()
+                .requestFactory(factory)
+                .requestInterceptor(loggingInterceptor)
+                .build();
+    }
+
+    /**
+     * owls 챗봇 전용 RestClient 빈
+     */
+    @Bean("chatRestClient")
+    public RestClient chatRestClient() {
+        HttpClient httpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(3)).build();
+        JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory(httpClient);
+        // 챗봇 환경 특성을 고려하여 타임아웃 30초 제한
+        factory.setReadTimeout(Duration.ofSeconds(30));
 
         return RestClient.builder()
                 .requestFactory(factory)
