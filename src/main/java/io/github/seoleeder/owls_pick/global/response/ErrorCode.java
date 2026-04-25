@@ -40,7 +40,8 @@ public enum ErrorCode {
     NOT_FOUND_END_POINT(40400, HttpStatus.NOT_FOUND, "존재하지 않는 API입니다."),
     NOT_FOUND_USER(40401, HttpStatus.NOT_FOUND, "존재하지 않는 사용자입니다."),
     NOT_FOUND_GAME(40402, HttpStatus.NOT_FOUND, "존재하지 않는 게임입니다."),
-    NOT_FOUND_NOTIFICATION(40402, HttpStatus.NOT_FOUND, "존재하지 않는 알림입니다."),
+    NOT_FOUND_NOTIFICATION(40403, HttpStatus.NOT_FOUND, "존재하지 않는 알림입니다."),
+    NOT_FOUND_SESSION(40404, HttpStatus.NOT_FOUND, "존재하지 않는 세션입니다."),
 
 
     // 409 Conflict

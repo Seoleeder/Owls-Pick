@@ -3,11 +3,15 @@ package io.github.seoleeder.owls_pick.repository.support;
 import com.querydsl.core.types.Expression;
 import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.core.types.dsl.Expressions;
+import com.querydsl.core.types.dsl.NumberTemplate;
 import org.springframework.stereotype.Component;
+
+import java.util.Arrays;
 
 import static io.github.seoleeder.owls_pick.entity.game.QGame.game;
 import static io.github.seoleeder.owls_pick.entity.game.QReviewStat.reviewStat;
 import static io.github.seoleeder.owls_pick.entity.game.QTag.tag;
+import static io.github.seoleeder.owls_pick.entity.game.QVectorEmbedding.vectorEmbedding;
 
 /**
  * 벡터 임베딩 파이프라인 전용 헬퍼 메서드 모음
@@ -22,8 +26,10 @@ public class EmbeddingExpressions {
     public BooleanExpression isValidForEmbedding() {
         return game.title.isNotNull().and(game.title.trim().isNotEmpty())
                 .and(isNotAdultGame())
-                .and(hasArrayData(tag.genres))
-                .and(hasArrayData(tag.themes))
+                .and(
+                        Expressions.numberTemplate(Integer.class, "function('cardinality', {0})", tag.genres).gt(0)
+                                .or(Expressions.numberTemplate(Integer.class, "function('cardinality', {0})", tag.themes).gt(0))
+                )
                 .and(reviewStat.reviewScoreDesc.isNotNull().and(reviewStat.reviewScoreDesc.trim().isNotEmpty()))
                 .and(reviewStat.reviewSummary.isNotNull().and(reviewStat.reviewSummary.trim().isNotEmpty()));
     }
@@ -41,5 +47,18 @@ public class EmbeddingExpressions {
      */
     private BooleanExpression hasArrayData(Expression<?> path) {
         return Expressions.booleanTemplate("function('cardinality', {0}) > 0", path);
+    }
+
+    /**
+     * pgvector 코사인 거리 연산 표현식 생성
+     * @param queryVector 비교할 대상 벡터
+     */
+    public NumberTemplate<Double> calculateCosineDistance(float[] queryVector) {
+//        String vectorString = Arrays.toString(queryVector);
+
+        return Expressions.numberTemplate(Double.class,
+                "function('cosine_distance', {0}, {1})",
+                vectorEmbedding.embedding,
+                queryVector);
     }
 }

@@ -36,6 +36,6 @@ public class ChatMessage {
     }
 
     public enum ChatRole {
-        User, CHATBOT
+        USER, ASSISTANT
     }
 }

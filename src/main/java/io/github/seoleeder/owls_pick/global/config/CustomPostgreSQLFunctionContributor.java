@@ -40,5 +40,11 @@ public class CustomPostgreSQLFunctionContributor implements FunctionContributor 
          */
         registry.registerPattern("unnest", "unnest(?1)");
 
+//        /*
+//         * cosine_distance: 코사인 거리 연산자 (<=>)를 이용한 거리 계산
+//         * cosine_distance(embedding, '[0.1, 0.2, 0.3, ...]')
+//         */
+//        registry.registerPattern("cosine_distance", "(?1 <=> CAST(?2 AS vector))");
+
     }
 }
