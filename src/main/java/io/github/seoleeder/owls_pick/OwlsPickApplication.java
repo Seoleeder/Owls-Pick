@@ -5,7 +5,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
-//@EnableScheduling
+@EnableScheduling
 @ConfigurationPropertiesScan("io.github.seoleeder.owls_pick")
 @SpringBootApplication
 public class OwlsPickApplication {

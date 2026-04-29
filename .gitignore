@@ -39,6 +39,8 @@ src/main/resources/firebase/*.json
 ### VS Code ###
 .vscode/
 
-### YAML Config ###
+### Configuration & Environment ###
 **/application.yaml
 **/application-*.yaml
+.env
+.env.*

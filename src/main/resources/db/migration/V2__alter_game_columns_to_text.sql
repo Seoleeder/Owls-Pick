@@ -1,3 +1,0 @@
-ALTER TABLE game ALTER COLUMN description TYPE TEXT;
-
-ALTER TABLE game ALTER COLUMN storyline TYPE TEXT;
