@@ -1,27 +1,77 @@
 version: '3.8'
 
 services:
+  # [추가됨] Spring Boot 백엔드 서비스
+  owls-pick-api:
+    build: .
+    image: seoleeder/owls-pick-spring-api:latest
+    container_name: owls-pick-api
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - owls-pick-network
+    restart: unless-stopped
+
+  # FastAPI 서비스
+  owls-pick-fastapi:
+    image: seoleeder/owls-pick-fastapi:latest
+    container_name: owls-pick-fastapi
+    ports:
+      - "8000:8000"
+    networks:
+      - owls-pick-network
+    restart: unless-stopped
+
   postgres:
     image: pgvector/pgvector:pg17
     container_name: owls-pick-postgres
     ports:
       - "5432:5432"
     environment:
-      # ⚠️ application.yml에 적어둔 DB명, 유저, 비밀번호와 똑같이 맞춰주세요!
       POSTGRES_DB: owls_pick
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: "Dkdk9320"
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      TZ: Asia/Seoul # KST 타임존 강제
     volumes:
       # 컨테이너를 삭제해도 데이터가 날아가지 않도록 볼륨 매핑
       - owls-pick-db-data:/var/lib/postgresql/data
-    restart: always
+    networks:
+      - owls-pick-network # 전용 네트워크 지정
+    restart: unless-stopped # 에러로 죽었을 때만 재시작 (항상 재시작 방지)
+    healthcheck:
+      # DB가 쿼리를 받을 준비가 되었는지 핑을 때려 확인하는 명령어
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d owls_pick" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   redis:
     image: redis:bookworm
     container_name: owls-pick-redis
     ports:
       - "6379:6379"
-    restart: always
+    command: redis-server --appendonly yes # AOF 방식을 켜서 디스크에 데이터 영구 저장
+    environment:
+      TZ: Asia/Seoul # KST 타임존 강제
+    volumes:
+      - owls-pick-redis-data:/data
+    networks:
+      - owls-pick-network # 전용 네트워크 지정
+    restart: unless-stopped
 
 volumes:
   owls-pick-db-data:
+  owls-pick-redis-data:
+
+networks:
+  owls-pick-network:
+    driver: bridge

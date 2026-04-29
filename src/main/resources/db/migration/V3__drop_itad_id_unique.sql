@@ -1,1 +1,0 @@
-ALTER TABLE game DROP CONSTRAINT game_itad_id_key;
