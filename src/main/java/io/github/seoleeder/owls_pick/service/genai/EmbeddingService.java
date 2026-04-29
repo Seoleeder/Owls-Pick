@@ -160,7 +160,7 @@ public class EmbeddingService {
     private EmbeddingBatchResponse requestEmbeddingToFastApi(List<EmbeddingBatchRequest.GameEmbeddingData> batchData) {
         EmbeddingBatchRequest requestDto = new EmbeddingBatchRequest(batchData);
         URI targetUri = UriComponentsBuilder.fromUriString(props.fastapiUrl())
-                .path("api/genai/embeddings/batch")
+                .path("/api/genai/embeddings/batch")
                 .build()
                 .toUri();
 
