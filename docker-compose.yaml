@@ -3,15 +3,8 @@ version: '3.8'
 services:
   # [추가됨] Spring Boot 백엔드 서비스
   owls-pick-api:
-    build: .
     image: seoleeder/owls-pick-spring-api:latest
     container_name: owls-pick-api
-    ports:
-      - "8080:8080"
-    env_file:
-      - .env
-    environment:
-      - SPRING_PROFILES_ACTIVE=prod
     depends_on:
       postgres:
         condition: service_healthy
@@ -25,8 +18,6 @@ services:
   owls-pick-fastapi:
     image: seoleeder/owls-pick-fastapi:latest
     container_name: owls-pick-fastapi
-    ports:
-      - "8000:8000"
     networks:
       - owls-pick-network
     restart: unless-stopped
@@ -34,8 +25,6 @@ services:
   postgres:
     image: pgvector/pgvector:pg17
     container_name: owls-pick-postgres
-    ports:
-      - "5432:5432"
     environment:
       POSTGRES_DB: owls_pick
       POSTGRES_USER: postgres
@@ -57,8 +46,6 @@ services:
   redis:
     image: redis:bookworm
     container_name: owls-pick-redis
-    ports:
-      - "6379:6379"
     command: redis-server --appendonly yes # AOF 방식을 켜서 디스크에 데이터 영구 저장
     environment:
       TZ: Asia/Seoul # KST 타임존 강제

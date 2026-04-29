@@ -1,0 +1,13 @@
+services:
+  owls-pick-api:
+    ports:
+      - "8080:8080"
+    # TODO: [AWS 배포 시점] Parameter Store 연동 시 env_file 속성 제거 및 IAM Role 사용
+    env_file:
+      - .env # 운영 서버용 환경 변수 파일
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+
+  owls-pick-fastapi:
+    ports:
+      - "8000:8000"

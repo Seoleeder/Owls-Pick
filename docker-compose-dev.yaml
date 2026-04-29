@@ -1,0 +1,22 @@
+services:
+  owls-pick-api:
+    build: .
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev # 로컬 테스트용 프로필
+
+  owls-pick-fastapi:
+    build: C:/owls-ai-engine
+    ports:
+      - "8000:8000"
+
+  postgres:
+    ports:
+      - "5432:5432" # 로컬에서 DBeaver, DataGrip 등 DB 툴 접속을 위해 개방
+
+  redis:
+    ports:
+      - "6379:6379" # 로컬에서 Redis GUI 툴 접속을 위해 개방
