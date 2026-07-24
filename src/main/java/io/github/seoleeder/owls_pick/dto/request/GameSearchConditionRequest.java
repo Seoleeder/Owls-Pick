@@ -14,8 +14,7 @@ import java.util.List;
 @Schema(description = "게임 통합 검색 및 필터링 조건 DTO")
 public record GameSearchConditionRequest(
         @Schema(description = "검색 키워드 (제목)", example = "Elden Ring")
-        @NotBlank(message = "Search keyword must not be blank.")
-        @Size(min = 2, message = "Keyword must be at least 2 characters long.")
+        @Size(max = 50, message = "Search keyword must not exceed 50 characters.")
         String keyword,
 
         @Schema(description = "선택된 장르 목록", example = "[\"INDIE\", \"ADVENTURE\"]")
