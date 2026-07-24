@@ -42,39 +42,6 @@ public class GameExpressions {
         return game.firstRelease.isNotNull().and(game.firstRelease.loe(safeReleaseMargin));
     }
 
-    /**
-     * 할인 중인 상품만 필터링 (할인율 0 초과)
-     */
-    public BooleanExpression isDiscounting(Boolean isDiscounting) {
-        return Boolean.TRUE.equals(isDiscounting) ? storeDetail.discountRate.gt(0) : null;
-    }
-
-
-    // --- 수치 및 범위 필터 ---
-
-    /**
-     * 실제 할인 가격 범위 필터링
-     */
-    public BooleanExpression priceBetween(Integer min, Integer max) {
-        if (min == null && max == null) return null;
-        return storeDetail.discountPrice.between(
-                min != null ? min : 0,
-                max != null ? max : Integer.MAX_VALUE
-        );
-    }
-
-    /**
-     * 메인 스토리 기준 플레이타임 범위 필터링
-     */
-    public BooleanExpression playtimeBetween(Integer min, Integer max) {
-        if (min == null && max == null) return null;
-
-        return playtime.mainStory.between(
-                min != null ? min : 0,
-                max != null ? max : Integer.MAX_VALUE
-        );
-    }
-
     // --- 텍스트 검색 필터 ---
 
     /**
@@ -161,7 +128,63 @@ public class GameExpressions {
     }
 
     /**
-     * 1:N 연관관계인 Tag 필터링을 위한 EXISTS 서브쿼리 생성
+     * StoreDetail(1:N) 조건 필터링 EXISTS 서브쿼리
+     */
+    public BooleanExpression storeConditionExists(GameSearchConditionRequest condition) {
+        if (condition.minPrice() == null && condition.maxPrice() == null && !Boolean.TRUE.equals(condition.isDiscounting())) {
+            return null;
+        }
+
+        // [수정 완료] 할인가(discountPrice)가 null인 정가 판매 상품을 위해 coalesce 연산 사용
+        NumberExpression<Integer> effectivePrice = storeDetail.discountPrice.coalesce(storeDetail.originalPrice);
+
+        BooleanExpression priceBetween = (condition.minPrice() != null || condition.maxPrice() != null)
+                ? effectivePrice.between(
+                condition.minPrice() != null ? condition.minPrice() : 0,
+                condition.maxPrice() != null ? condition.maxPrice() : Integer.MAX_VALUE
+        )
+                : null;
+
+        BooleanExpression isDiscounting = Boolean.TRUE.equals(condition.isDiscounting())
+                ? storeDetail.discountRate.gt(0)
+                : null;
+
+        return JPAExpressions
+                .selectOne()
+                .from(storeDetail)
+                .where(
+                        storeDetail.game.id.eq(game.id),
+                        priceBetween,
+                        isDiscounting
+                )
+                .exists();
+    }
+
+    /**
+     * Playtime(1:N) 조건 필터링 EXISTS 서브쿼리
+     */
+    public BooleanExpression playtimeExists(GameSearchConditionRequest condition) {
+        if (condition.minPlaytime() == null && condition.maxPlaytime() == null) {
+            return null;
+        }
+
+        BooleanExpression playtimeBetween = playtime.mainStory.between(
+                condition.minPlaytime() != null ? condition.minPlaytime() : 0,
+                condition.maxPlaytime() != null ? condition.maxPlaytime() : Integer.MAX_VALUE
+        );
+
+        return JPAExpressions
+                .selectOne()
+                .from(playtime)
+                .where(
+                        playtime.game.id.eq(game.id),
+                        playtimeBetween
+                )
+                .exists();
+    }
+
+    /**
+     * Tag(1:1) 조건 필터링 EXISTS 서브쿼리
      */
     public BooleanExpression tagExists(GameSearchConditionRequest condition) {
         if ((condition.genres() == null || condition.genres().isEmpty()) &&
@@ -174,8 +197,8 @@ public class GameExpressions {
                 .from(tag)
                 .where(
                         tag.game.id.eq(game.id),
-                        genresOverlap(condition.genres()), // 내부 메서드 직접 호출
-                        themesOverlap(condition.themes())  // 내부 메서드 직접 호출
+                        genresOverlap(condition.genres()),
+                        themesOverlap(condition.themes())
                 )
                 .exists();
     }
