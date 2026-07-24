@@ -445,24 +445,21 @@ public class GameRepositoryImpl implements GameRepositoryCustom {
     @Override
     public Page<GameWithReviewStatDto> searchGames(GameSearchConditionRequest condition, Pageable pageable) {
 
-        // 검색 조건을 만족하는 고유 Game ID 목록 페이징 조회
+        // Phase 1: 검색 조건을 만족하는 고유 Game PK 목록 페이징 조회
         List<Long> gameIds = queryFactory
                 .select(game.id)
                 .from(game)
-                .leftJoin(tag).on(tag.game.id.eq(game.id))
                 .leftJoin(storeDetail).on(storeDetail.game.id.eq(game.id))
                 .leftJoin(playtime).on(playtime.game.id.eq(game.id))
                 .leftJoin(reviewStat).on(reviewStat.game.id.eq(game.id))
                 .where(
                         gameExpressions.titleContains(condition.keyword()),
-                        gameExpressions.genresOverlap(condition.genres()),
-                        gameExpressions.themesOverlap(condition.themes()),
+                        gameExpressions.tagExists(condition),
                         gameExpressions.priceBetween(condition.minPrice(), condition.maxPrice()),
                         gameExpressions.playtimeBetween(condition.minPlaytime(), condition.maxPlaytime()),
                         gameExpressions.isDiscounting(condition.isDiscounting()),
                         gameExpressions.isReleased()
                 )
-                .groupBy(game.id)
                 .orderBy(gameExpressions.getOrderSpecifiers(condition.sort(), condition.keyword()))
                 .offset(pageable.getOffset())
                 .limit(pageable.getPageSize())
@@ -473,7 +470,7 @@ public class GameRepositoryImpl implements GameRepositoryCustom {
             return PageableExecutionUtils.getPage(List.of(), pageable, () -> 0L);
         }
 
-        // 식별된 gameIds 대상 상세 DTO 프로젝션 조회
+        // Phase 2: 식별된 gameIds 대상 상세 DTO 단독 조회
         List<GameWithReviewStatDto> content = queryFactory
                 .select(Projections.constructor(GameWithReviewStatDto.class,
                         game,
@@ -481,21 +478,21 @@ public class GameRepositoryImpl implements GameRepositoryCustom {
                 ))
                 .from(game)
                 .leftJoin(reviewStat).on(reviewStat.game.id.eq(game.id))
+                .leftJoin(storeDetail).on(storeDetail.game.id.eq(game.id)) // 향후 할인율/가격 정렬 확장 대비
+                .leftJoin(playtime).on(playtime.game.id.eq(game.id))       // 향후 플레이타임 정렬 확장 대비
                 .where(game.id.in(gameIds))
                 .orderBy(gameExpressions.getOrderSpecifiers(condition.sort(), condition.keyword()))
                 .fetch();
 
         // 고유 Game 기준 카운트 쿼리
         JPAQuery<Long> countQuery = queryFactory
-                .select(game.id.countDistinct())
+                .select(game.count())
                 .from(game)
-                .leftJoin(tag).on(tag.game.id.eq(game.id))
                 .leftJoin(storeDetail).on(storeDetail.game.id.eq(game.id))
                 .leftJoin(playtime).on(playtime.game.id.eq(game.id))
                 .where(
                         gameExpressions.titleContains(condition.keyword()),
-                        gameExpressions.genresOverlap(condition.genres()),
-                        gameExpressions.themesOverlap(condition.themes()),
+                        gameExpressions.tagExists(condition),
                         gameExpressions.priceBetween(condition.minPrice(), condition.maxPrice()),
                         gameExpressions.playtimeBetween(condition.minPlaytime(), condition.maxPlaytime()),
                         gameExpressions.isDiscounting(condition.isDiscounting()),
