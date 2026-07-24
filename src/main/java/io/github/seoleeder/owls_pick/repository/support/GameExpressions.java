@@ -2,6 +2,8 @@ package io.github.seoleeder.owls_pick.repository.support;
 
 import com.querydsl.core.types.OrderSpecifier;
 import com.querydsl.core.types.dsl.*;
+import com.querydsl.jpa.JPAExpressions;
+import io.github.seoleeder.owls_pick.dto.request.GameSearchConditionRequest;
 import io.github.seoleeder.owls_pick.entity.game.enums.GameSortType;
 import io.github.seoleeder.owls_pick.entity.game.enums.GenreType;
 import io.github.seoleeder.owls_pick.entity.game.enums.ThemeType;
@@ -156,6 +158,26 @@ public class GameExpressions {
     public BooleanExpression tagsOverlap(String[] tags) {
         return Expressions.booleanTemplate("function('array_overlap', {0}, {1}) = true", tag.genres, tags)
                 .or(Expressions.booleanTemplate("function('array_overlap', {0}, {1}) = true", tag.themes, tags));
+    }
+
+    /**
+     * 1:N 연관관계인 Tag 필터링을 위한 EXISTS 서브쿼리 생성
+     */
+    public BooleanExpression tagExists(GameSearchConditionRequest condition) {
+        if ((condition.genres() == null || condition.genres().isEmpty()) &&
+                (condition.themes() == null || condition.themes().isEmpty())) {
+            return null;
+        }
+
+        return JPAExpressions
+                .selectOne()
+                .from(tag)
+                .where(
+                        tag.game.id.eq(game.id),
+                        genresOverlap(condition.genres()), // 내부 메서드 직접 호출
+                        themesOverlap(condition.themes())  // 내부 메서드 직접 호출
+                )
+                .exists();
     }
 
 //    /**
