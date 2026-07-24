@@ -445,19 +445,16 @@ public class GameRepositoryImpl implements GameRepositoryCustom {
     @Override
     public Page<GameWithReviewStatDto> searchGames(GameSearchConditionRequest condition, Pageable pageable) {
 
-        // Phase 1: 검색 조건을 만족하는 고유 Game PK 목록 페이징 조회
+        // Phase 1: 고유 Game PK 페이징 선조회
         List<Long> gameIds = queryFactory
                 .select(game.id)
                 .from(game)
-                .leftJoin(storeDetail).on(storeDetail.game.id.eq(game.id))
-                .leftJoin(playtime).on(playtime.game.id.eq(game.id))
                 .leftJoin(reviewStat).on(reviewStat.game.id.eq(game.id))
                 .where(
                         gameExpressions.titleContains(condition.keyword()),
                         gameExpressions.tagExists(condition),
-                        gameExpressions.priceBetween(condition.minPrice(), condition.maxPrice()),
-                        gameExpressions.playtimeBetween(condition.minPlaytime(), condition.maxPlaytime()),
-                        gameExpressions.isDiscounting(condition.isDiscounting()),
+                        gameExpressions.storeConditionExists(condition),
+                        gameExpressions.playtimeExists(condition),
                         gameExpressions.isReleased()
                 )
                 .orderBy(gameExpressions.getOrderSpecifiers(condition.sort(), condition.keyword()))
@@ -478,8 +475,6 @@ public class GameRepositoryImpl implements GameRepositoryCustom {
                 ))
                 .from(game)
                 .leftJoin(reviewStat).on(reviewStat.game.id.eq(game.id))
-                .leftJoin(storeDetail).on(storeDetail.game.id.eq(game.id)) // 향후 할인율/가격 정렬 확장 대비
-                .leftJoin(playtime).on(playtime.game.id.eq(game.id))       // 향후 플레이타임 정렬 확장 대비
                 .where(game.id.in(gameIds))
                 .orderBy(gameExpressions.getOrderSpecifiers(condition.sort(), condition.keyword()))
                 .fetch();
@@ -488,14 +483,11 @@ public class GameRepositoryImpl implements GameRepositoryCustom {
         JPAQuery<Long> countQuery = queryFactory
                 .select(game.count())
                 .from(game)
-                .leftJoin(storeDetail).on(storeDetail.game.id.eq(game.id))
-                .leftJoin(playtime).on(playtime.game.id.eq(game.id))
                 .where(
                         gameExpressions.titleContains(condition.keyword()),
                         gameExpressions.tagExists(condition),
-                        gameExpressions.priceBetween(condition.minPrice(), condition.maxPrice()),
-                        gameExpressions.playtimeBetween(condition.minPlaytime(), condition.maxPlaytime()),
-                        gameExpressions.isDiscounting(condition.isDiscounting()),
+                        gameExpressions.storeConditionExists(condition),
+                        gameExpressions.playtimeExists(condition),
                         gameExpressions.isReleased()
                 );
 
