@@ -153,8 +153,7 @@ public class GameRepositoryImpl implements GameRepositoryCustom {
                 .from(game)
                 .join(tag).on(tag.id.eq(game.id))
                 .where(
-                        gameExpressions.isReleased(),
-                        unnestThemes.ne(ThemeType.EROTIC.name()) // 성인 테마 교집합에서 배제
+                        gameExpressions.isReleased()
                 )
                 .groupBy(unnestGenres, unnestThemes)
                 .having(game.id.count().goe((long) minRequired))

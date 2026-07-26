@@ -82,6 +82,12 @@ public class MainPickService {
                 // 문자열 태그 데이터를 Enum 객체로 변환하여 리스트에 추가
                 GenreType genre = GenreType.valueOf(genreStr);
                 ThemeType theme = ThemeType.valueOf(themeStr);
+
+                // 성인 테마(EROTIC) 조합 배제 필터링
+                if (theme == ThemeType.EROTIC) {
+                    continue;
+                }
+
                 newCombinations.add(new GenreThemePair(genre, theme));
             } catch (IllegalArgumentException e) {
                 // Enum 상수에 없는 예외 태그 데이터는 로그 출력 후 스킵
