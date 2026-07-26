@@ -43,19 +43,23 @@ public class WishlistService {
 
     /**
      * 위시리스트 토글 메서드
-     * 사용자의 위시리스트를 확인하여 이미 등록된 상태면 해제하고, 아니면 추가
-     * 처리 후 해당 게임이 위시리스트에 담긴 총 횟수를 반환
+     * 이미 등록된 경우 삭제하고, 미등록 상태인 경우 신규 추가 후 총 위시리스트 수 반환
      */
     @Transactional
     public WishlistToggleResponse toggleWishlist(Long userId, Long gameId) {
+
+        // 유저 ID와 게임 ID 기반 식별자 복합키 생성
         WishlistId wishlistId = new WishlistId(userId, gameId);
 
         return wishlistRepository.findById(wishlistId)
                 .map(wishlist -> {
-                    // 이미 담긴 상태 -> 위시리스트 해제
+                    // 위시리스트 삭제 처리
                     wishlistRepository.delete(wishlist);
-                    wishlistRepository.flush(); // 카운트 조회를 위해 DB 즉시 동기화
 
+                    // 카운트 조회를 위해 DB 즉시 동기화
+                    wishlistRepository.flush();
+
+                    // 해당 게임의 전체 위시리스트 수 집계
                     long totalCount = wishlistRepository.countByGameId(gameId);
                     log.info("[Wishlist] Removed from wishlist - userId: {}, gameId: {}, current total: {}", userId, gameId, totalCount);
 
@@ -64,12 +68,12 @@ public class WishlistService {
                             .totalWishCount(totalCount).build();
                 })
                 .orElseGet(() -> {
-                    // 추가되지 않은 상태 -> 위시리스트 추가
-                    User user = userRepository.findById(userId)
-                            .orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND_USER));
+                    // 인증된 유저는 DB 조회 없이 프록시 객체 참조로 대체
+                    User user = userRepository.getReferenceById(userId);
                     Game game = gameRepository.findById(gameId)
                             .orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND_GAME));
 
+                    // 신규 위시리스트 엔티티 생성
                     Wishlist newWishlist = Wishlist.builder()
                             .id(wishlistId)
                             .user(user)
@@ -77,14 +81,18 @@ public class WishlistService {
                             .build();
 
                     wishlistRepository.save(newWishlist);
-                    wishlistRepository.flush(); // 카운트 조회를 위해 DB 즉시 동기화
 
+                    // 카운트 조회를 위해 DB 즉시 동기화
+                    wishlistRepository.flush();
+
+                    // 해당 게임의 전체 위시리스트 수 집계
                     long totalCount = wishlistRepository.countByGameId(gameId);
                     log.info("[Wishlist] Added to wishlist - userId: {}, gameId: {}, current total: {}", userId, gameId, totalCount);
 
                     return WishlistToggleResponse.builder()
                             .isWished(true)
-                            .totalWishCount(totalCount).build();
+                            .totalWishCount(totalCount)
+                            .build();
                 });
     }
 
@@ -94,16 +102,21 @@ public class WishlistService {
     // ==========================================
 
     /**
-     * 사용자의 위시리스트(찜 목록)를 페이징하여 조회
-     * GameResponse에 해당 게임을 찜한 시각(wishedAt)을 결합하여 반환
+     * 사용자의 위시리스트 목록 페이징 조회
+     * GameResponse(게임 기본 정보, 리뷰 통계, 최저가)에 해당 게임을 찜한 시각을 결합하여 반환
      */
     @Transactional(readOnly = true)
     public Page<WishlistResponse> getMyWishlist(Long userId, Pageable pageable) {
 
-        // 위시리스트 주요 데이터 조회
+        // 유저의 위시리스트 기본 데이터 페이징 조회
         Page<WishlistQueryDto> wishlistPage = wishlistRepository.findWishlistPageByUserId(userId, pageable);
 
-        // 현재 페이지에 있는 게임 ID 리스트 추출
+        // 찜 목록이 비어있는 경우 즉시 빈 페이지 반환
+        if (wishlistPage.isEmpty()) {
+            return Page.empty(pageable);
+        }
+
+        // 현재 페이징 결과 내 게임 ID 목록 추출
         List<Long> gameIds = wishlistPage.getContent().stream()
                 .map(dto -> dto.game().getId())
                 .toList();
@@ -111,14 +124,15 @@ public class WishlistService {
         // 각 게임별 현재 최저가 데이터 매핑
         Map<Long, StoreDetail> lowestPriceMap = gamePriceService.getLowestPriceMap(gameIds);
 
-        // 컨버터를 활용하여 최종 응답 DTO 조립
+        // 응답 DTO 변환 및 결과 조합
         return wishlistPage.map(dto -> {
+            // 게임별 최저가 데이터 매핑
             StoreDetail bestOffer = lowestPriceMap.get(dto.game().getId());
 
-            // 컨버터 규격에 맞게 게임, 리뷰 통계 데이터 추출 후 변환
+            // DTO 변환용 중간 전달 객체 생성
             GameWithReviewStatDto tempDto = new GameWithReviewStatDto(dto.game(), dto.reviewStat());
 
-            // GameWithReviewStatDto -> GameResponse 변환
+            // 최저가 포함 게임 응답 DTO 생성
             GameResponse gameResponse = gameResponseConverter.convertToDto(tempDto, bestOffer);
 
             return WishlistResponse.builder()
@@ -133,7 +147,7 @@ public class WishlistService {
      */
     @Transactional
     public void removeFromWishlist(Long userId, Long gameId) {
-        // 복합키(WishlistId)를 생성하여 삭제 쿼리 실행
+        // 식별자 복합키 생성 및 단건 삭제 실행
         WishlistId wishlistId = new WishlistId(userId, gameId);
 
         wishlistRepository.deleteById(wishlistId);

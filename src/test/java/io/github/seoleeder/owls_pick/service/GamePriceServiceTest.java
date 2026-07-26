@@ -44,7 +44,7 @@ public class GamePriceServiceTest {
                 .discountPrice(30000) // 여기가 최저가
                 .build();
 
-        when(storeDetailRepository.findAllByGameIdIn(anyList()))
+        when(storeDetailRepository.findStoreDetailsByGameIds(anyList()))
                 .thenReturn(List.of(expensiveStore, cheapStore));
 
         // [When] 최저가 산출 로직 실행
@@ -75,7 +75,7 @@ public class GamePriceServiceTest {
                 .discountPrice(10000)
                 .build();
 
-        when(storeDetailRepository.findAllByGameIdIn(anyList()))
+        when(storeDetailRepository.findStoreDetailsByGameIds(anyList()))
                 .thenReturn(List.of(nullPriceStore, validPriceStore));
 
         // [When] 최저가 산출 로직 실행
@@ -91,7 +91,7 @@ public class GamePriceServiceTest {
     @DisplayName("DB 조회 예외 발생 시 애플리케이션 중단 없는 빈 데이터 반환 검증")
     void getLowestPriceMap_ExceptionThrown_ReturnEmptyMap() {
         // [Given] 리포지토리 호출 시 DB 통신 에러 발생 상황 세팅
-        when(storeDetailRepository.findAllByGameIdIn(anyList()))
+        when(storeDetailRepository.findStoreDetailsByGameIds(anyList()))
                 .thenThrow(new RuntimeException("DB Connection Timeout"));
 
         // [When] 최저가 산출 로직 실행

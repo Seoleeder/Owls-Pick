@@ -15,11 +15,11 @@ public abstract class AbstractSocialProvider implements SocialAuthProvider {
     private final String providerName;
 
     // properties에서 provider 이름에 맞는 설정만 추출
-    protected AbstractSocialProvider(String providerName, SocialProperties socialProperties) {
+    protected AbstractSocialProvider(String providerName, SocialProperties socialProperties, RestClient restClient) {
         this.providerName = providerName;
         this.registration = socialProperties.registration().get(providerName);
         this.providerConfig = socialProperties.provider().get(providerName);
-        this.restClient = RestClient.builder().build();
+        this.restClient = restClient;
     }
 
     //해당 provider가 지원되는지 확인

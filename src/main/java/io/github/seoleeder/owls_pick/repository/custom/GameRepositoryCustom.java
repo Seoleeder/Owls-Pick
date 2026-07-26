@@ -1,5 +1,6 @@
 package io.github.seoleeder.owls_pick.repository.custom;
 
+import com.querydsl.core.Tuple;
 import io.github.seoleeder.owls_pick.dto.embedding.EmbeddingSourceDto;
 import io.github.seoleeder.owls_pick.dto.request.GameSearchConditionRequest;
 import io.github.seoleeder.owls_pick.dto.response.SearchFilterMetadataResponse;
@@ -45,6 +46,9 @@ public interface GameRepositoryCustom {
 
     // 특정 테마의 게임 조회 (정렬 기준 선택)
     Page<GameWithReviewStatDto> findGamesByTheme(ThemeType theme, GameSortType sort, Pageable pageable);
+
+    // 단일 쿼리를 통한 유효 장르-테마 교집합 그룹 집계
+    List<Tuple> findValidCombinationsAggregated(int minRequired);
 
 
     // --- 맞춤형 Pick 섹션 ---

@@ -19,7 +19,9 @@ public class StoreDetailRepositoryImpl implements StoreDetailRepositoryCustom {
 
     private final JPAQueryFactory queryFactory;
 
-    //특정 스토어의 모든 App Id 조회
+    /**
+     * 특정 스토어의 모든 App Id 조회
+     * */
     @Override
     public Set<String> findAllAppIdsByStore(StoreDetail.StoreName storeName) {
 
@@ -32,8 +34,25 @@ public class StoreDetailRepositoryImpl implements StoreDetailRepositoryCustom {
         return new HashSet<>(result);
     }
 
+    /**
+     * 여러 게임 ID 목록에 해당하는 스토어 가격 상세 정보 조회
+     */
+    @Override
+    public List<StoreDetail> findStoreDetailsByGameIds(List<Long> gameIds) {
+        if (gameIds == null || gameIds.isEmpty()) {
+            return List.of();
+        }
 
-    //ReviewStat이 없는 게임 조회
+        return queryFactory
+                .selectFrom(storeDetail)
+                .join(storeDetail.game, game).fetchJoin()
+                .where(storeDetail.game.id.in(gameIds))
+                .fetch();
+    }
+
+    /**
+     * ReviewStat이 존재하지 않는 게임 조회
+     * */
     @Override
     public List<StoreDetail> findGamesWithNoReviews(StoreDetail.StoreName storeName, int limit) {
         return queryFactory
@@ -49,7 +68,9 @@ public class StoreDetailRepositoryImpl implements StoreDetailRepositoryCustom {
                 .fetch();
     }
 
-    //ReviewStat의 갱신 시각이 오래된 순으로 조회 (리뷰 수집이 안된 게임도 포함)
+    /**
+     * ReviewStat의 갱신 시각이 오래된 순으로 조회 (리뷰 수집이 안된 게임도 포함)
+     */
     @Override
     public List<StoreDetail> findGamesNeedingReviewUpdate(StoreDetail.StoreName storeName, int limit) {
         return queryFactory

@@ -16,6 +16,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import io.github.seoleeder.owls_pick.entity.user.User;
+import org.springframework.util.StringUtils;
 
 @Slf4j
 @Service
@@ -106,11 +107,14 @@ public class UserProfileService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND_USER));
 
-        // 닉네임이 변경되었을 경우에만 중복 검사
-        if (request.nickname() != null && !user.getNickname().equals(request.nickname())) {
-            if (!isNicknameAvailable(request.nickname())) {
-                log.warn("[Profile] Profile update failed: Nickname '{}' is already in use.", request.nickname());
-                throw new CustomException(ErrorCode.DUPLICATE_NICKNAME);
+        // 닉네임이 변경되었을 경우에만 공백 제거 후 중복 검사
+        if (request.nickname() != null) {
+            String trimmedNickname = request.nickname().trim();
+            if (!user.getNickname().equals(trimmedNickname)) {
+                if (!isNicknameAvailable(trimmedNickname)) {
+                    log.warn("[Profile] Profile update failed: Nickname '{}' is already in use.", trimmedNickname);
+                    throw new CustomException(ErrorCode.DUPLICATE_NICKNAME);
+                }
             }
         }
 
@@ -129,7 +133,7 @@ public class UserProfileService {
         user.updateDiscountNotification(isEnabled);
         log.info("[Profile] Toggled discount notification for User: {} to {}", userId, isEnabled);
 
-        // 비동의 처리 시, 해당 유저의 모든 FCM 토큰 즉시 파기
+        // 비동의 처리 시, 해당 유저의 모든 FCM 토큰 삭제
         if (!isEnabled) {
             fcmTokenRepository.deleteAllByUserId(userId);
             log.info("[Profile] User {} revoked notification consent. All FCM tokens deleted.", userId);
@@ -138,9 +142,13 @@ public class UserProfileService {
 
     /**
      * 닉네임 중복 확인 (온보딩 및 마이페이지에서 공통 사용)
+     * 공백이나 빈 문자열 입력 시 false 처리
      */
     @Transactional(readOnly = true)
     public boolean isNicknameAvailable(String nickname) {
+        if (!StringUtils.hasText(nickname)) {
+            return false;
+        }
         return !userRepository.existsByNickname(nickname);
     }
 }

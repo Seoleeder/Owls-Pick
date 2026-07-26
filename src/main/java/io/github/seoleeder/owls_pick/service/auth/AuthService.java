@@ -22,6 +22,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import io.jsonwebtoken.ExpiredJwtException;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.Collections;
 import java.util.concurrent.TimeUnit;
@@ -35,22 +36,33 @@ public class AuthService {
     private final UserRepository userRepository;
     private final SocialAccountRepository socialAccountRepository;
     private final JwtTokenProvider jwtTokenProvider;
+    private final TransactionTemplate transactionTemplate;
 
     private final RedisTemplate<String, String> redisTemplate;
     private final JwtProperties jwtProperties;
 
     /**
-     * [소셜 로그인 로직]
-     * 인가 코드와 state 값을 받아서 로그인 처리 및 JWT 토큰 발급
-     * */
-    @Transactional
+     * [소셜 로그인] 인가 코드 기반 인증 처리 및 토큰 발급
+     */
     public LoginResponse login(String providerName, String code, String state) {
-        // 1. 소셜 유저 정보 가져오기
+        // 소셜 제공자 인스턴스 추출
         SocialAuthProvider provider = socialAuthFactory.getProvider(providerName);
+
+        // 인가 코드로 소셜 토큰(Access Token, ID Token) 조회
         SocialTokenDto tokenDto = provider.fetchAccessToken(code, state);
+
+        // OIDC ID 토큰 검증 및 사용자 정보 추출
         SocialUserResponse userInfo = provider.getUserInfo(tokenDto);
 
-        // 2. 가입 또는 로그인
+        // 내부 트랜잭션에서 가입/로그인 처리 및 토큰 발급 수행
+        return transactionTemplate.execute(status -> processLogin(userInfo, providerName));
+    }
+
+    /**
+     * 사용자 계정 처리, JWT 발급 및 Redis Refresh Token 저장
+     */
+    public LoginResponse processLogin(SocialUserResponse userInfo, String providerName) {
+        // 소셜 계정 조회 및 신규 사용자 가입 처리
         SocialAccount.Provider enumProvider = SocialAccount.Provider.valueOf(providerName.toUpperCase());
         SocialAccount socialAccount = socialAccountRepository
                 .findByProviderAndProviderId(enumProvider, userInfo.providerId())
@@ -58,21 +70,19 @@ public class AuthService {
 
         User user = socialAccount.getUser();
 
-        // 3. JWT 발급
+        // Authentication 객체 생성
         Authentication authentication = new UsernamePasswordAuthenticationToken(
                 user.getId().toString(),
                 null,
                 Collections.singleton(new SimpleGrantedAuthority("ROLE_USER"))
         );
 
+        // Access Token 및 Refresh Token 발급
         String accessToken = jwtTokenProvider.createAccessToken(authentication);
         String refreshToken = jwtTokenProvider.createRefreshToken(user.getId().toString());
 
         try {
-            // 4. Refresh Token을 Redis에 저장 (사용자 식별자를 Key로 사용)
-            // Key: "RT:1" (RT:유저PK)
-            // Value: eyJhbGci...
-            // TTL: JwtProperties에 설정된 refreshTokenValidity 시간과 동일하게 설정
+            // Redis에 Refresh Token 저장 (Key: "RT:{userId}")
             String redisKey = "RT:" + user.getId();
             redisTemplate.opsForValue().set(
                     redisKey,
@@ -101,9 +111,10 @@ public class AuthService {
      * 로그인 과정에서 사용자 정보가 존재하지 않으면 회원가입 처리
      * */
     private SocialAccount join(SocialUserResponse userInfo, SocialAccount.Provider provider) {
-        //사용자의 이메일 정보가 존재하지 않으면 임의의 문자열로 대체
+        // 이메일 미제공 시 대체 식별용 임시 이메일 생성
         String email = userInfo.email() != null ? userInfo.email() : "no-email-" + userInfo.providerId();
 
+        // 기존 사용자 조회 또는 생성
         User user = userRepository.findByEmail(email)
                 .orElseGet(() -> {
                     User newUser = User.builder()
@@ -113,6 +124,7 @@ public class AuthService {
                     return userRepository.save(newUser);
                 });
 
+        // 소셜 계정 연동 데이터 저장
         SocialAccount socialAccount = SocialAccount.builder()
                 .user(user)
                 .provider(provider)
@@ -184,7 +196,7 @@ public class AuthService {
     }
 
     /**
-     * [로그아웃] Redis에서 해당 유저의 Refresh Token을 삭제
+     * [로그아웃] Redis에서 해당 유저의 Refresh Token 삭제
      * (응답 받은 후, 프론트엔드에서 브라우저/로컬스토리지에 있는 AT, RT 알아서 삭제)
      */
     @Transactional
@@ -192,13 +204,12 @@ public class AuthService {
         String redisKey = "RT:" + userId;
 
         try {
-            // Redis에 키가 존재하면 삭제
-            if (Boolean.TRUE.equals(redisTemplate.hasKey(redisKey))) {
-                redisTemplate.delete(redisKey);
+            // Redis Key 삭제
+            Boolean isDeleted = redisTemplate.delete(redisKey);
+            if (Boolean.TRUE.equals(isDeleted)) {
                 log.info("[Auth] User logged out successfully. Refresh token deleted - UserId: {}", userId);
             }
         } catch (Exception e) {
-            // 레디스 서버가 죽었거나 통신이 끊긴 경우
             log.error("[Auth] Redis communication failed during logout - UserId: {}", userId, e);
             throw new CustomException(ErrorCode.INTERNAL_SERVER_ERROR);
         }
@@ -209,7 +220,7 @@ public class AuthService {
      */
     @Transactional
     public void withdraw(String userId) {
-        //Redis에 저장된 Refresh Token 삭제 (토큰 재사용 방지)
+        // Redis에 저장된 Refresh Token 삭제 (토큰 재사용 방지)
         logout(userId);
 
         // 소셜 계정 연동 정보 삭제

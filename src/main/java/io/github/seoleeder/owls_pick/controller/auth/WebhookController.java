@@ -29,8 +29,9 @@ public class WebhookController {
     @Operation(summary = "네이버 연동 해제 웹훅",
             description = "사용자가 네이버 설정에서 서비스 연결을 끊으면 회원 탈퇴 처리")
     @PostMapping(value = "/naver/unlink", consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
-    public ResponseEntity<Void> naverUnlink(@RequestParam String clientId, @RequestParam String encryptUniqueId,
-                                            @RequestParam String timestamp, @RequestParam String signature) {
+    public ResponseEntity<Void> naverUnlink(
+            @RequestParam("client_id") String clientId, @RequestParam("encrypt_unique_id") String encryptUniqueId,
+            @RequestParam("timestamp") String timestamp, @RequestParam("signature") String signature) {
         webhookService.handleNaverUnlink(clientId, encryptUniqueId, timestamp, signature);
         return ResponseEntity.noContent().build(); // 204
     }

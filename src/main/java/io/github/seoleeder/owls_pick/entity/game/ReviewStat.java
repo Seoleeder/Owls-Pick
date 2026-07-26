@@ -15,8 +15,8 @@ import java.util.List;
 @Entity
 @Table(name = "review_stat")
 public class ReviewStat {
+
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @MapsId
