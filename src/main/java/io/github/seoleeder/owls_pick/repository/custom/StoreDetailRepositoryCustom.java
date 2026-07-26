@@ -27,4 +27,7 @@ public interface StoreDetailRepositoryCustom {
     // 대상 게임 목록과 스토어 조건에 해당하는 스토어 상세 정보 일괄 조회
     List<StoreDetail> findAllByGamesAndStoreNames(List<Game> games, List<StoreName> storeNames);
 
+    // 게임 ID 목록에 해당하는 스토어 상세 정보 일괄 조회
+    List<StoreDetail> findStoreDetailsByGameIds(List<Long> gameIds);
+
 }

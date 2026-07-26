@@ -23,6 +23,8 @@ public record SocialProperties(
         @NotBlank(message = "Client Secret is required ")
         String clientSecret,
 
+        String adminKey,
+
         @NotBlank(message = "Redirect URI is required")
         String redirectUri,
 

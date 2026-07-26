@@ -54,7 +54,7 @@ public class GameDetailService {
         List<Screenshot> screenshots = screenshotRepository.findByGameId(gameId);
 
         // [N:M] 중간 매핑 테이블(GameCompany)을 통해 조회
-        List<GameCompany> gameCompanies = gameCompanyRepository.findByGameId(gameId);
+        List<GameCompany> gameCompanies = gameCompanyRepository.findByGameIdWithCompany(gameId);
 
         // 위시리스트 상태 및 통계 가져오기
         long totalWishCount = wishlistRepository.countByGameId(gameId);

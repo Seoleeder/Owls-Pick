@@ -44,12 +44,10 @@ public class User {
     private boolean isDiscountNotificationEnabled = false;
 
     /** List 타입을 DB에서 이해할 수 있도록 Array타입으로 변환 */
-    @Setter
     @JdbcTypeCode(SqlTypes.ARRAY)
     @Column(columnDefinition = "text[]")
     private List<String> preferredTags;
 
-    @Setter
     @JdbcTypeCode(SqlTypes.ARRAY)
     @Column(columnDefinition = "text[]")
     private List<String> preferredStores;

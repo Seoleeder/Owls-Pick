@@ -2,6 +2,8 @@ package io.github.seoleeder.owls_pick.repository.impl;
 
 import com.querydsl.jpa.JPAExpressions;
 import java.time.Duration;
+
+import com.querydsl.jpa.impl.JPAQuery;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import io.github.seoleeder.owls_pick.entity.game.Dashboard;
 import io.github.seoleeder.owls_pick.entity.game.Dashboard.CurationType;
@@ -44,7 +46,7 @@ public class DashboardRepositoryImpl implements DashboardRepositoryCustom {
 
     // 특정 큐레이션 타입의 가장 최근(Max) referenceAt 조회
     public LocalDateTime findLatestReferenceAt(CurationType type) {
-        QDashboard dashboard = QDashboard.dashboard;
+
         return queryFactory.select(dashboard.referenceAt.max())
                 .from(dashboard)
                 .where(dashboard.curationType.eq(type))
@@ -54,8 +56,6 @@ public class DashboardRepositoryImpl implements DashboardRepositoryCustom {
     // 특정 큐레이션 타입 + 특정 기준 시간의 랭킹 조회
     @Override
     public List<Dashboard> findGamesByCurationAndDate(CurationType type, LocalDateTime targetDate, int limit) {
-        QDashboard dashboard = QDashboard.dashboard;
-        QGame game = QGame.game;
 
         return queryFactory.selectFrom(dashboard)
                 .join(dashboard.game, game).fetchJoin() // N+1 방지
@@ -70,9 +70,7 @@ public class DashboardRepositoryImpl implements DashboardRepositoryCustom {
 
     // 특정 큐레이션 타입의 특정 시각 기준으로 이전/다음 기준 시각 조회
     public LocalDateTime findAdjacentDate(CurationType type, LocalDateTime currentDate, boolean isPrevious) {
-        QDashboard dashboard = QDashboard.dashboard;
-
-        var query = queryFactory.select(dashboard.referenceAt)
+        JPAQuery<LocalDateTime> query = queryFactory.select(dashboard.referenceAt)
                 .from(dashboard)
                 .where(dashboard.curationType.eq(type));
 
@@ -91,7 +89,6 @@ public class DashboardRepositoryImpl implements DashboardRepositoryCustom {
      * */
     @Override
     public LocalDateTime findClosestReferenceAt(CurationType type, LocalDateTime targetDate) {
-        QDashboard dashboard = QDashboard.dashboard;
 
         // 타겟 시간보다 작거나 같은 가장 가까운 과거 날짜 조회
         LocalDateTime pastDate = queryFactory.select(dashboard.referenceAt.max())

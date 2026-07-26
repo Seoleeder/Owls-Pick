@@ -10,6 +10,7 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
 
 import java.util.Map;
@@ -20,8 +21,8 @@ public class KakaoAuthProvider extends AbstractSocialProvider{
 
     private final OidcValidator oidcValidator;
 
-    protected KakaoAuthProvider(SocialProperties socialProperties, OidcValidator oidcValidator) {
-        super("kakao", socialProperties);
+    protected KakaoAuthProvider(SocialProperties socialProperties, OidcValidator oidcValidator, RestClient restClient) {
+        super("kakao", socialProperties, restClient);
         this.oidcValidator = oidcValidator;
     }
 
