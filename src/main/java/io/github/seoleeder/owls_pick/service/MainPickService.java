@@ -1,5 +1,6 @@
 package io.github.seoleeder.owls_pick.service;
 
+import com.querydsl.core.Tuple;
 import io.github.seoleeder.owls_pick.dto.response.UpcomingGameResponse;
 import io.github.seoleeder.owls_pick.dto.response.section.PersonalizedSectionResponse;
 import io.github.seoleeder.owls_pick.dto.response.section.UpcomingSectionResponse;
@@ -44,13 +45,13 @@ public class MainPickService {
     private final CurationProperties curationProps;
     private final GameResponseConverter responseConverter;
 
-    // 유효한 태그 조합을 담을 리스트 (서버 메모리에 캐싱)
-    private List<GenreThemePair> validCombinations = new ArrayList<>();
+    // 유효 장르-테마 교집합 목록 (인메모리 캐싱)
+    private volatile List<GenreThemePair> validCombinations = new ArrayList<>();
 
     public record GenreThemePair(GenreType genre, ThemeType theme) {}
 
     /**
-     * 서버 시작 시 유효 태그 조합 초기화 메서드 실행
+     * 서버 구동 시 유효 태그 조합 캐시 최초 1회 초기화
      */
     @PostConstruct
     public void initValidCombinations() {
@@ -58,29 +59,37 @@ public class MainPickService {
     }
 
     /**
-     * 장르, 테마 태그 조합을 카운트하여 유효한 조합들로 캐시 갱신
+     * 장르-테마 교집합 캐시 갱신 (최소 게임 수 충족 조합만 필터링)
      * - 주기 : 매일 새벽 4시
      */
     @Scheduled(cron = "0 0 4 * * *")
     public void refreshValidCombinations() {
         log.info("[MainPick] Updating valid genre-theme combinations in memory cache...");
-        List<GenreThemePair> newCombinations = new ArrayList<>();
 
-        // 유효 조합의 기준이 되는 해당 조합의 최소 게임 수
+        // 유효 조합의 기준이 되는 최소 게임 수 조회
         int minRequired = curationProps.intersection().minRequiredGames();
 
-        for (GenreType genre : GenreType.values()) {
-            for (ThemeType theme : ThemeType.values()) {
-                if (theme == ThemeType.EROTIC) continue; // 성인 테마는 교집합에서 배제
+        // 최소 게임 수를 충족하는 장르-테마 조합 목록 조회
+        List<Tuple> aggregatedPairs = gameRepository.findValidCombinationsAggregated(minRequired);
 
-                long count = gameRepository.countGamesByGenreAndTheme(genre, theme);
-                if (count >= minRequired) {
-                    newCombinations.add(new GenreThemePair(genre, theme));
-                }
+        List<GenreThemePair> newCombinations = new ArrayList<>();
+        for (Tuple tuple : aggregatedPairs) {
+            // 조회 결과에서 장르 및 테마 문자열 추출
+            String genreStr = tuple.get(0, String.class);
+            String themeStr = tuple.get(1, String.class);
+
+            try {
+                // 문자열 태그 데이터를 Enum 객체로 변환하여 리스트에 추가
+                GenreType genre = GenreType.valueOf(genreStr);
+                ThemeType theme = ThemeType.valueOf(themeStr);
+                newCombinations.add(new GenreThemePair(genre, theme));
+            } catch (IllegalArgumentException e) {
+                // Enum 상수에 없는 예외 태그 데이터는 로그 출력 후 스킵
+                log.warn("[MainPick] Ignore unmapped tag data: Genre={}, Theme={}", genreStr, themeStr);
             }
         }
 
-        // 갱신이 완료되면 한 번에 덮어쓰기 (동시성 이슈 최소화)
+        // 인메모리 캐시 일괄 갱신
         this.validCombinations = newCombinations;
         log.info("[MainPick] Memory cache updated successfully. Total valid combinations loaded: {}", validCombinations.size());
     }
@@ -94,12 +103,12 @@ public class MainPickService {
 
         CurationProperties.Upcoming props = curationProps.upcoming();
 
+        // 조회 기준일 (오늘 ~ N개월 후)
         LocalDate today = LocalDate.now();
-        LocalDate maxDate = today.plusMonths(props.periodMonths()); // 출시 예정일 필터링을 위한 N개월 설정 값
+        LocalDate maxDate = today.plusMonths(props.periodMonths());
 
         Page<Game> upcomingGames = gameRepository.findUpcomingGames(today, maxDate, props.minHypes(), pageable);
 
-        // Game 엔티티 -> Upcoming 전용 DTO
         Page<UpcomingGameResponse> dtoPage = upcomingGames.map(responseConverter::convertToUpcomingDto);
 
         return new UpcomingSectionResponse("출시 예정 최고 기대작", dtoPage);
@@ -107,7 +116,7 @@ public class MainPickService {
 
     /**
      * [Section 1] Most Personalized Picks: 선호 태그 기반 맞춤 추천
-     * 선호 태그를 가장 많이 포함하는 사용자 맞춤형 최적 게임 리스트 조회
+     * 유저 선호 태그 최다 일치 게임 리스트 조회
      */
     public PersonalizedSectionResponse getMostPersonalizedPicks(Long userId, Pageable pageable) {
         log.debug("[MainPick] Fetching most personalized picks for userId: {}", userId);
@@ -120,7 +129,12 @@ public class MainPickService {
                 ? new ArrayList<>(user.getPreferredTags())
                 : new ArrayList<>();
 
-        // 동일 태그 조합의 캐시 적중률 극대화를 위한 리스트 오름차순 정렬
+        // 선호 태그 미설정 시 DB 쿼리 없이 즉시 빈 페이지 반환
+        if (preferredTags.isEmpty()) {
+            return new PersonalizedSectionResponse("맞춤 픽", responseConverter.convertPage(Page.empty(pageable)));
+        }
+
+        // 캐시 적중률 향상을 위한 태그 리스트 오름차순 정렬
         Collections.sort(preferredTags);
 
         Page<GameWithReviewStatDto> games = gameRepository.findPersonalizedGamesByPreferredTags(preferredTags, pageable);
@@ -134,7 +148,7 @@ public class MainPickService {
     public PersonalizedSectionResponse getRandomGenrePicks(Pageable pageable) {
         GenreType[] genres = GenreType.values();
 
-        // 장르 목록 중 장르 태그 하나 선택
+        // 무작위 장르 태그 1개 추출
         GenreType selectedGenre = genres[ThreadLocalRandom.current().nextInt(genres.length)];
 
         log.debug("[MainPick] Fetching random genre picks. Selected genre: {}", selectedGenre.name());
@@ -148,15 +162,15 @@ public class MainPickService {
      */
     public PersonalizedSectionResponse getRandomThemePicks(Long userId, Pageable pageable) {
 
-        // 로그인한 사용자가 성인일 경우 true 반환
+        // 성인 인증 여부 확인
         final boolean isAdult = (userId != null) && getUser(userId).isAdultUser();
 
-        // 성인 태그를 제외한 테마 태그 목록
+        // 미성년자 대상 EROTIC 테마 배제
         List<ThemeType> safeThemes = Arrays.stream(ThemeType.values())
                 .filter(theme -> isAdult || theme != ThemeType.EROTIC)
                 .toList();
 
-        // 테마 목록 중 테마 태그 하나 선택
+        // 가용 테마 태그 중 1개 무작위 추출
         ThemeType selectedTheme = safeThemes.get(ThreadLocalRandom.current().nextInt(safeThemes.size()));
 
         log.debug("[MainPick] Fetching random theme picks for userId: {}. Selected theme: {}", userId, selectedTheme.name());
@@ -169,7 +183,7 @@ public class MainPickService {
      * [Section 4] Intersection Picks: 유효한 장르 X 테마 조합을 가진 게임 조회
      */
     public PersonalizedSectionResponse getIntersectionPicks(Pageable pageable) {
-        // 장르 X 테마 조합 데이터가 존재하지 않으면 INDIE 태그로 조회 후 반환
+        // 장르 X 테마 캐시 미존재 시 INDIE 태그로 Fallback 처리
         if (validCombinations.isEmpty()) {
             log.warn("[MainPick] No valid combinations found in memory cache. Falling back to INDIE genre.");
 
@@ -178,6 +192,7 @@ public class MainPickService {
             return new PersonalizedSectionResponse(GenreType.INDIE.getKorName(), responseConverter.convertPage(fallbackGames));
         }
 
+        // 유효 조합 중 1개 무작위 추출
         GenreThemePair selectedPair = validCombinations.get(ThreadLocalRandom.current().nextInt(validCombinations.size()));
 
         log.debug("[MainPick] Fetching random intersection picks. Selected combination: [Genre: {}, Theme: {}]",
@@ -187,6 +202,7 @@ public class MainPickService {
                 selectedPair.genre(), selectedPair.theme(), pageable
         );
 
+        // 응답용 조합 타이틀 문자열 조합
         String comboTitle = selectedPair.theme().getKorName() + " " + selectedPair.genre().getKorName();
         return new PersonalizedSectionResponse(comboTitle, responseConverter.convertPage(games));
     }
@@ -212,6 +228,13 @@ public class MainPickService {
      */
     public PersonalizedSectionResponse getTrendingPicks(Long userId, Pageable pageable) {
         User user = getUser(userId);
+
+        // 선호 태그 미설정 시 즉시 빈 페이지 반환 (Early Return)
+        if (user.getPreferredTags() == null || user.getPreferredTags().isEmpty()) {
+            return new PersonalizedSectionResponse("트렌딩 픽", responseConverter.convertPage(Page.empty(pageable)));
+        }
+
+        // 유저 선호 태그 중 1건 무작위 추출 (연령 필터링 적용)
         String safeTag = getSafeRandomPreferredTag(user);
 
         log.debug("[MainPick] Fetching trending picks for userId: {}. Selected tag: {}", userId, safeTag);
@@ -227,6 +250,13 @@ public class MainPickService {
      */
     public PersonalizedSectionResponse getQuickPlays(Long userId, Pageable pageable) {
         User user = getUser(userId);
+
+        // 선호 태그 미설정 시 즉시 빈 페이지 반환 (Early Return)
+        if (user.getPreferredTags() == null || user.getPreferredTags().isEmpty()) {
+            return new PersonalizedSectionResponse("퀵 플레이", responseConverter.convertPage(Page.empty(pageable)));
+        }
+
+        // 유저 선호 태그 중 1건 무작위 추출 (연령 필터링 적용)
         String safeTag = getSafeRandomPreferredTag(user);
 
         log.debug("[MainPick] Fetching quick plays for userId: {}. Selected tag: {}", userId, safeTag);
@@ -237,19 +267,24 @@ public class MainPickService {
         return new PersonalizedSectionResponse(safeTag, responseConverter.convertPage(games));
     }
 
-    // 헬퍼 메서드
+    /**
+     * 유저 식별자 기반 엔티티 단건 조회
+     */
     private User getUser(Long userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND_USER));
     }
 
     /**
-     * 미성년자의 경우 텍스트상 성인 게임을 유추할 수 있는 태그 배제
+     * 유저 선호 태그 무작위 1건 추출 (미성년자 EROTIC 테마 배제)
      */
     private String getSafeRandomPreferredTag(User user) {
         List<String> tags = user.getPreferredTags();
+
+        // 태그 미존재 시 INDIE 폴백
         if (tags == null || tags.isEmpty()) return "INDIE";
 
+        // 미성년자 유해 태그 필터링
         List<String> safeTags = tags;
         if (!user.isAdultUser()) {
             safeTags = tags.stream()
@@ -257,7 +292,10 @@ public class MainPickService {
                     .toList();
         }
 
+        // 필터링 후 태그 미존재 시 INDIE 폴백
         if (safeTags.isEmpty()) return "INDIE";
+
+        // 정제된 태그 중 무작위 1건 반환
         return safeTags.get(ThreadLocalRandom.current().nextInt(safeTags.size()));
     }
 }

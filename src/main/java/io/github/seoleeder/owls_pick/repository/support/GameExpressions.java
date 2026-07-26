@@ -128,6 +128,43 @@ public class GameExpressions {
     }
 
     /**
+     * 태그 교집합 점수 계산 (장르 교집합 개수 + 테마 교집합 개수)
+     */
+    public NumberExpression<Integer> calculateTagMatchScore(String[] tags) {
+
+        // // 장르(genres) 교집합 개수 산출
+        NumberExpression<Integer> genreMatchCount = Expressions.numberTemplate(Integer.class,
+                "cast(function('array_intersect_count', {0}, {1}) as int)",
+                tag.genres, tags);
+
+        // 테마(themes) 교집합 개수 산출
+        NumberExpression<Integer> themeMatchCount = Expressions.numberTemplate(Integer.class,
+                "cast(function('array_intersect_count', {0}, {1}) as int)",
+                tag.themes, tags);
+
+        // 산출된 가중치 총합 반환
+        return genreMatchCount.add(themeMatchCount);
+    }
+
+    // --- 집계 연산을 위한 unnest 함수 표현식 ---
+
+    /**
+     * 장르 배열을 개별 행으로 평탄화
+     */
+    public StringExpression unnestGenres() {
+        return Expressions.stringTemplate("function('unnest', {0})", tag.genres);
+    }
+
+    /**
+     * 테마 배열을 개별 행으로 평탄화
+     */
+    public StringExpression unnestThemes() {
+        return Expressions.stringTemplate("function('unnest', {0})", tag.themes);
+    }
+
+    // --- EXISTS 조건 서브쿼리 ---
+
+    /**
      * StoreDetail(1:N) 조건 필터링 EXISTS 서브쿼리
      */
     public BooleanExpression storeConditionExists(GameSearchConditionRequest condition) {
@@ -177,7 +214,7 @@ public class GameExpressions {
                 .selectOne()
                 .from(playtime)
                 .where(
-                        playtime.game.id.eq(game.id),
+                        playtime.id.eq(game.id),
                         playtimeBetween
                 )
                 .exists();
@@ -196,41 +233,11 @@ public class GameExpressions {
                 .selectOne()
                 .from(tag)
                 .where(
-                        tag.game.id.eq(game.id),
+                        tag.id.eq(game.id),
                         genresOverlap(condition.genres()),
                         themesOverlap(condition.themes())
                 )
                 .exists();
-    }
-
-//    /**
-//     * 태그 교집합 점수 계산 (장르 교집합 + 테마 교집합 개수)
-//     *
-//     */
-//    public NumberExpression<Integer> calculateTagMatchScore(String[] tags) {
-//        return Expressions.numberTemplate(Integer.class,
-//                "cardinality(array(select unnest({0}) intersect select unnest({1}))) + " +
-//                        "cardinality(array(select unnest({2}) intersect select unnest({1})))",
-//                tag.genres, tags, tag.themes);
-//    }
-
-    /**
-     * 태그 교집합 점수 계산 (장르 교집합 개수 + 테마 교집합 개수)
-     */
-    public NumberExpression<Integer> calculateTagMatchScore(String[] tags) {
-
-        // // 장르(genres) 교집합 개수 산출
-        NumberExpression<Integer> genreMatchCount = Expressions.numberTemplate(Integer.class,
-                "cast(function('array_intersect_count', {0}, {1}) as int)",
-                tag.genres, tags);
-
-        // 테마(themes) 교집합 개수 산출
-        NumberExpression<Integer> themeMatchCount = Expressions.numberTemplate(Integer.class,
-                "cast(function('array_intersect_count', {0}, {1}) as int)",
-                tag.themes, tags);
-
-        // 산출된 가중치 총합 반환
-        return genreMatchCount.add(themeMatchCount);
     }
 
     // --- 동적 정렬 (Sorting) ---
@@ -239,23 +246,23 @@ public class GameExpressions {
      * 동적 정렬 메서드
      */
     public OrderSpecifier<?>[] getOrderSpecifiers(GameSortType sort, String keyword) {
-        // 기본 정렬 리스트 준비
+
         List<OrderSpecifier<?>> specifiers = new ArrayList<>();
 
-        // 검색어가 있으면 검색어와 제목의 유사도가 높은 순으로 우선 배치
+        // 검색어가 존재하는 경우: 완전 일치 및 유사도 우선 정렬
         if (StringUtils.hasText(keyword)) {
             // 대소문자 구분 없이 제목이 완벽히 일치하면 최상단(1)으로, 아니면 그 뒤(2)로 배치
             specifiers.add(new CaseBuilder()
                     .when(game.title.equalsIgnoreCase(keyword)).then(1)
                     .otherwise(2).asc());
 
-            // 완벽 일치가 아니라면, 유사도가 높은 순서대로 정렬
+            // 완벽 일치가 아니라면, 유사도가 높은 순으로 정렬
             specifiers.add(Expressions.numberTemplate(Double.class,
                     "function('similarity', {0}, {1})",
                     game.title, keyword).desc());
         }
 
-        // 유저가 선택한 정렬 옵션 적용 (기본값: 인기순)
+        // 유저 선택 정렬 옵션 적용 (기본값: POPULAR)
         GameSortType finalSort = (sort == null) ? GameSortType.POPULAR : sort;
 
         switch (finalSort) {

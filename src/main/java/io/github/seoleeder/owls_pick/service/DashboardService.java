@@ -70,7 +70,13 @@ public class DashboardService {
 
             if (cached != null) {
                 log.debug("[Dashboard] Cache hit. Type: {}", type);
-                // Redis에 저장된 객체를 DTO로 안전하게 역직렬화
+
+                // Redis에 저장된 JSON 문자열을 DTO 객체로 역직렬화
+                if (cached instanceof String jsonStr) {
+                    return objectMapper.readValue(jsonStr, DashboardResponse.class);
+                }
+
+                // 객체 형태 캐시 데이터의 DTO 변환
                 return objectMapper.convertValue(cached, DashboardResponse.class);
             }
         } catch (Exception e) {
@@ -99,12 +105,13 @@ public class DashboardService {
             return new DashboardResponse(type.name(), null, null, null, Collections.emptyList());
         }
 
-        // 최신 수집 시각의 데이터 조회
+        // 최신 수집 시각 기준 대시보드 차트 및 최저가 결합 데이터 조회
         DashboardResponse response = fetchFromDb(type, latestDate, 100);
 
-        // 완성된 대시보드 응답을 Redis에 저장 (TTL 30분)
+        // 응답 DTO를 JSON 문자열로 직렬화하여 Redis에 저장 (TTL 30분)
         try {
-            redisTemplate.opsForValue().set(getCacheKey(type), response, CACHE_TTL);
+            String jsonString = objectMapper.writeValueAsString(response);
+            redisTemplate.opsForValue().set(getCacheKey(type), jsonString, CACHE_TTL);
             log.debug("[Dashboard] Redis cache updated successfully. Type: {}", type);
         } catch (Exception e) {
             log.error("[Dashboard] Failed to update Redis cache. Type: {}", type, e);

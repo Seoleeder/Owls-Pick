@@ -2,6 +2,9 @@ package io.github.seoleeder.owls_pick.repository.impl;
 
 import com.querydsl.core.Tuple;
 import com.querydsl.core.types.Projections;
+import com.querydsl.core.types.dsl.BooleanExpression;
+import com.querydsl.core.types.dsl.NumberExpression;
+import com.querydsl.core.types.dsl.StringExpression;
 import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQuery;
 import com.querydsl.jpa.impl.JPAQueryFactory;
@@ -86,49 +89,25 @@ public class GameRepositoryImpl implements GameRepositoryCustom {
     /* 장르/테마 태그 기반 탐색 쿼리 메서드 */
 
     /**
-     * 특정 장르에 해당하는 게임 목록 조회 (페이징 및 다중 정렬)
+     * 특정 장르에 해당하는 게임 목록 조회
      */
     @Override
     public Page<GameWithReviewStatDto> findGamesByGenre(GenreType genre, GameSortType sort, Pageable pageable) {
-        // 데이터를 가져오는 Main Query
-        List<GameWithReviewStatDto> content = queryFactory
-                .select(Projections.constructor(
-                        GameWithReviewStatDto.class,
-                        game,
-                        reviewStat
-                ))
-                .from(game)
-                // 장르 검색을 위해 Tag 테이블과 Inner Join
-                .join(tag).on(tag.game.id.eq(game.id))
-                // 리뷰 데이터가 없는 게임도 조회되어야 하므로 반드시 Left Join 사용
-                .leftJoin(reviewStat).on(reviewStat.game.id.eq(game.id))
-                .where(
-                        gameExpressions.containsGenre(genre),
-                        gameExpressions.isReleased()
-                )
-                .orderBy(gameExpressions.getOrderSpecifiers(sort, null))
-                .offset(pageable.getOffset())
-                .limit(pageable.getPageSize())
-                .fetch();
-
-        // 전체 데이터 개수를 세는 Count Query
-        JPAQuery<Long> countQuery = queryFactory
-                .select(game.count())
-                .from(game)
-                .join(tag).on(tag.game.id.eq(game.id))
-                .where(gameExpressions.containsGenre(genre),
-                        gameExpressions.isReleased()
-                );
-
-        //PageableExecutionUtils를 사용하여 필요할 때만 count 쿼리 실행
-        return PageableExecutionUtils.getPage(content, pageable, countQuery::fetchOne);
+        return findGamesByTagCondition(gameExpressions.containsGenre(genre), sort, pageable);
     }
 
     /**
-     * 특정 테마에 해당하는 게임 목록 조회 (페이징 및 다중 정렬)
+     * 특정 테마에 해당하는 게임 목록 조회
      */
     @Override
     public Page<GameWithReviewStatDto> findGamesByTheme(ThemeType theme, GameSortType sort, Pageable pageable) {
+        return findGamesByTagCondition(gameExpressions.containsTheme(theme), sort, pageable);
+    }
+
+    /**
+     * 태그(장르/테마) 기반 게임 목록 및 카운트 조회 공통 처리
+     */
+    private Page<GameWithReviewStatDto> findGamesByTagCondition(BooleanExpression tagCondition, GameSortType sort, Pageable pageable) {
         List<GameWithReviewStatDto> content = queryFactory
                 .select(Projections.constructor(
                         GameWithReviewStatDto.class,
@@ -136,11 +115,10 @@ public class GameRepositoryImpl implements GameRepositoryCustom {
                         reviewStat
                 ))
                 .from(game)
-                .join(tag).on(tag.game.id.eq(game.id))
-                // 리뷰가 없는 게임 누락 방지를 위한 Left Join
-                .leftJoin(reviewStat).on(reviewStat.game.id.eq(game.id))
+                .join(tag).on(tag.id.eq(game.id))
+                .leftJoin(reviewStat).on(reviewStat.id.eq(game.id))
                 .where(
-                        gameExpressions.containsTheme(theme),
+                        tagCondition,
                         gameExpressions.isReleased()
                 )
                 .orderBy(gameExpressions.getOrderSpecifiers(sort, null))
@@ -151,38 +129,59 @@ public class GameRepositoryImpl implements GameRepositoryCustom {
         JPAQuery<Long> countQuery = queryFactory
                 .select(game.count())
                 .from(game)
-                .join(tag).on(tag.game.id.eq(game.id))
+                .join(tag).on(tag.id.eq(game.id))
                 .where(
-                        gameExpressions.containsTheme(theme),
+                        tagCondition,
                         gameExpressions.isReleased()
                 );
 
-        // PageableExecutionUtils를 사용하여 Page 객체 생성
         return PageableExecutionUtils.getPage(content, pageable, countQuery::fetchOne);
     }
 
     /* 사용자 맞춤 Pick 섹션 쿼리 메서드 */
 
     /**
-     * 출시 예정인 게임 중, Hype이 일정 수치 이상인 게임 조회
+     * 최소 게임 수 기준을 충족하는 유효 장르-테마 교집합 산출 (unnest 및 GROUP BY 활용)
+     */
+    @Override
+    public List<Tuple> findValidCombinationsAggregated(int minRequired) {
+        StringExpression unnestGenres = gameExpressions.unnestGenres();
+        StringExpression unnestThemes = gameExpressions.unnestThemes();
+
+        return queryFactory
+                .select(unnestGenres, unnestThemes)
+                .from(game)
+                .join(tag).on(tag.id.eq(game.id))
+                .where(
+                        gameExpressions.isReleased(),
+                        unnestThemes.ne(ThemeType.EROTIC.name()) // 성인 테마 교집합에서 배제
+                )
+                .groupBy(unnestGenres, unnestThemes)
+                .having(game.id.count().goe((long) minRequired))
+                .fetch();
+    }
+
+    /**
+     * 출시 예정인 게임 중, Hype 조건을 충족하는 게임 조회
      * */
     public Page<Game> findUpcomingGames(LocalDate today, LocalDate maxDate, int minHypes, Pageable pageable) {
 
         List<Game> content = queryFactory
                 .selectFrom(game)
                 .where(
-                        game.firstRelease.between(today, maxDate),  // 오늘부터 N개월 이내 출시!
-                        game.coverId.isNotNull(),                   // 게임 커버 이미지 존재
-                        game.hypes.goe(minHypes)                    // 최소 M명 이상 기대하는 대작만 필터링
+                        game.firstRelease.between(today, maxDate),  // 지정된 기간 내 출시 예정 게임
+                        game.coverId.isNotNull(),                   // 커버 이미지 존재 여부 확인
+                        game.hypes.goe(minHypes)                    // 기준치 이상의 기대도를 가진 레코드 필터링
                 )
                 .orderBy(
-                        game.hypes.desc(),              // 1. 기대도 높은 순
-                        game.firstRelease.asc()         // 2. 출시 예정일 가까운 순
+                        game.hypes.desc(),              // 기대도 높은 순
+                        game.firstRelease.asc()         // 출시 예정일 가까운 순
                 )
                 .offset(pageable.getOffset())
                 .limit(pageable.getPageSize())
                 .fetch();
 
+        // 전체 건수 산출 쿼리 실행
         JPAQuery<Long> countQuery = queryFactory
                 .select(game.count())
                 .from(game)
@@ -204,46 +203,43 @@ public class GameRepositoryImpl implements GameRepositoryCustom {
     @Override
     @Cacheable(value = "main_pick:personal", key = "#userTags + ':' + #pageable.pageNumber")
     public Page<GameWithReviewStatDto> findPersonalizedGamesByPreferredTags(List<String> userTags, Pageable pageable) {
-        // 유저 태그 리스트를 PostgreSQL 배열 규격에 맞게 변환
+        // 유저 태그 리스트를 배열 검색 규격(String[])으로 변환
         String[] tags = userTags.toArray(new String[0]);
 
-        // 컨텐츠 조회 쿼리
+        // 데이터 조회 쿼리 실행
         List<GameWithReviewStatDto> content = queryFactory
                 .select(Projections.constructor(GameWithReviewStatDto.class,
                         game,
                         reviewStat
                 ))
                 .from(game)
-                .join(tag).on(tag.game.id.eq(game.id))
-                .leftJoin(reviewStat).on(reviewStat.game.id.eq(game.id))
+                .join(tag).on(tag.id.eq(game.id))
+                .leftJoin(reviewStat).on(reviewStat.id.eq(game.id))
                 .where(
-                        // 선호 태그 중 하나라도 겹치는 게 있는 게임들
-                        gameExpressions.tagsOverlap(tags),
+                        gameExpressions.tagsOverlap(tags), // 태그 배열 교집합 검증
                         gameExpressions.isReleased() // 출시된 게임만 노출
                 )
                 .orderBy(
-                        // '장르 교집합 개수 + 테마 교집합 개수' 가 높은 순으로 정렬
-                        gameExpressions.calculateTagMatchScore(tags).desc(),
-                        // 가중치가 같을 경우 인기(리뷰 수) 순으로 정렬
-                        reviewStat.totalReview.desc().nullsLast()
+                        gameExpressions.calculateTagMatchScore(tags).desc(),    // 일치하는 태그 교집합 수가 높은 순으로 정렬
+                        reviewStat.totalReview.desc().nullsLast()   // 일치율 동일 시 누적 리뷰 수 내림차순 정렬
                 )
                 .offset(pageable.getOffset())
                 .limit(pageable.getPageSize())
                 .fetch();
 
+        // 전체 건수 산출 쿼리 실행
         JPAQuery<Long> countQuery = queryFactory
                 .select(game.count())
                 .from(game)
-                .join(tag).on(tag.game.id.eq(game.id))
+                .join(tag).on(tag.id.eq(game.id))
                 .where(
                         gameExpressions.tagsOverlap(tags),
                         gameExpressions.isReleased()
                 );
 
-        // 페이징 처리된 조회 결과 원본 객체 생성
         Page<GameWithReviewStatDto> page = PageableExecutionUtils.getPage(content, pageable, countQuery::fetchOne);
 
-        // Redis 역직렬화 호환성을 위해 RestPage 타입으로 래핑 후 반환
+        // Redis 직렬화/역직렬화 규격 호환성을 위해 RestPage로 래핑
         return new RestPage<>(page);
     }
 
@@ -253,11 +249,12 @@ public class GameRepositoryImpl implements GameRepositoryCustom {
     @Override
     public Page<GameWithReviewStatDto> findGamesByGenreAndThemeIntersection(GenreType genre, ThemeType theme, Pageable pageable) {
 
+        // 데이터 조회 쿼리 실행
         List<GameWithReviewStatDto> content = queryFactory
                 .select(Projections.constructor(GameWithReviewStatDto.class, game, reviewStat))
                 .from(game)
-                .join(tag).on(tag.game.id.eq(game.id))
-                .leftJoin(reviewStat).on(reviewStat.game.id.eq(game.id))
+                .join(tag).on(tag.id.eq(game.id))
+                .leftJoin(reviewStat).on(reviewStat.id.eq(game.id))
                 .where(
                         gameExpressions.containsGenre(genre), // 장르 포함
                         gameExpressions.containsTheme(theme), // 테마 포함
@@ -268,17 +265,17 @@ public class GameRepositoryImpl implements GameRepositoryCustom {
                 .limit(pageable.getPageSize())
                 .fetch();
 
+        // 전체 건수 산출 쿼리 실행
         JPAQuery<Long> countQuery = queryFactory
                 .select(game.count())
                 .from(game)
-                .join(tag).on(tag.game.id.eq(game.id))
+                .join(tag).on(tag.id.eq(game.id))
                 .where(
                         gameExpressions.containsGenre(genre),
                         gameExpressions.containsTheme(theme),
                         gameExpressions.isReleased()
                 );
 
-        // PageableExecutionUtils를 사용하여 Page 객체 생성
         return PageableExecutionUtils.getPage(content, pageable, countQuery::fetchOne);
     }
 
@@ -292,7 +289,7 @@ public class GameRepositoryImpl implements GameRepositoryCustom {
         List<GameWithReviewStatDto> content = queryFactory
                 .select(Projections.constructor(GameWithReviewStatDto.class, game, reviewStat))
                 .from(game)
-                .leftJoin(reviewStat).on(reviewStat.game.id.eq(game.id))
+                .leftJoin(reviewStat).on(reviewStat.id.eq(game.id))
                 .where(
                         reviewStat.reviewScore.goe(minScore),         // 리뷰 스코어 8(매우 긍정적) 이상
                         reviewStat.totalReview.between(minReviews, maxReviews), // 리뷰 수로 필터링
@@ -306,10 +303,11 @@ public class GameRepositoryImpl implements GameRepositoryCustom {
                 .limit(pageable.getPageSize())
                 .fetch();
 
+        // 전체 건수 산출 쿼리 실행
         JPAQuery<Long> countQuery = queryFactory
                 .select(game.count())
                 .from(game)
-                .leftJoin(reviewStat).on(reviewStat.game.id.eq(game.id))
+                .join(reviewStat).on(reviewStat.id.eq(game.id))
                 .where(
                         reviewStat.reviewScore.goe(minScore),
                         reviewStat.totalReview.between(minReviews, maxReviews),
@@ -335,27 +333,28 @@ public class GameRepositoryImpl implements GameRepositoryCustom {
         List<GameWithReviewStatDto> content = queryFactory
                 .select(Projections.constructor(GameWithReviewStatDto.class, game, reviewStat))
                 .from(game)
-                .join(tag).on(tag.game.id.eq(game.id))
-                .leftJoin(reviewStat).on(reviewStat.game.id.eq(game.id))
+                .join(tag).on(tag.id.eq(game.id))
+                .leftJoin(reviewStat).on(reviewStat.id.eq(game.id))
                 .where(
-                        gameExpressions.containsTag(tagName),      // 해당 태그 포함 여부
-                        reviewStat.weeklyReview.gt(0),                     // 최근 7일간 리뷰가 달린 게임 필터링
-                        reviewStat.reviewScore.goe(minScore),                   // 평점 하한선 (예: 7~8점)
+                        gameExpressions.containsTag(tagName),   // 태그 포함 검증
+                        reviewStat.weeklyReview.gt(0),      // 최근 7일간 리뷰가 달린 게임 필터링
+                        reviewStat.reviewScore.goe(minScore),   // 평점 하한선 (예: 7~8점)
                         gameExpressions.isReleased()
                 )
                 .orderBy(
-                        reviewStat.weeklyReview.desc(),                         // 주간 리뷰 수가 제일 많은 순
-                        reviewStat.totalReview.desc().nullsLast()               // 같다면, 전체 리뷰가 많은 순으로
+                        reviewStat.weeklyReview.desc(),                         // 주간 리뷰 수 많은 순
+                        reviewStat.totalReview.desc().nullsLast()               // 누적 리뷰 수 많은 순
                 )
                 .offset(pageable.getOffset())
                 .limit(pageable.getPageSize())
                 .fetch();
 
+        // 전체 건수 산출 쿼리 실행
         JPAQuery<Long> countQuery = queryFactory
                 .select(game.count())
                 .from(game)
-                .join(tag).on(tag.game.id.eq(game.id))
-                .leftJoin(reviewStat).on(reviewStat.game.id.eq(game.id))
+                .join(tag).on(tag.id.eq(game.id))
+                .join(reviewStat).on(reviewStat.id.eq(game.id))
                 .where(
                         gameExpressions.containsTag(tagName),
                         reviewStat.weeklyReview.gt(0),
@@ -363,10 +362,7 @@ public class GameRepositoryImpl implements GameRepositoryCustom {
                         gameExpressions.isReleased()
                 );
 
-        // 페이징 처리된 조회 결과 원본 객체 생성
         Page<GameWithReviewStatDto> page = PageableExecutionUtils.getPage(content, pageable, countQuery::fetchOne);
-
-        // Redis 역직렬화 호환성을 위해 RestPage 타입으로 래핑 후 반환
         return new RestPage<>(page);
     }
 
@@ -380,9 +376,9 @@ public class GameRepositoryImpl implements GameRepositoryCustom {
         List<GameWithReviewStatDto> content = queryFactory
                 .select(Projections.constructor(GameWithReviewStatDto.class, game, reviewStat))
                 .from(game)
-                .join(tag).on(tag.game.id.eq(game.id))
-                .join(playtime).on(playtime.game.id.eq(game.id))
-                .leftJoin(reviewStat).on(reviewStat.game.id.eq(game.id))
+                .join(tag).on(tag.id.eq(game.id))
+                .join(playtime).on(playtime.id.eq(game.id))
+                .leftJoin(reviewStat).on(reviewStat.id.eq(game.id))
                 .where(
                         gameExpressions.containsTag(tagName),
                         playtime.mainStory.between(5, maxPlaytime), // 최소 5분부터 maxPlaytime 이내의 게임
@@ -401,9 +397,9 @@ public class GameRepositoryImpl implements GameRepositoryCustom {
         JPAQuery<Long> countQuery = queryFactory
                 .select(game.count())
                 .from(game)
-                .join(tag).on(tag.game.id.eq(game.id))
-                .join(playtime).on(playtime.game.id.eq(game.id))
-                .leftJoin(reviewStat).on(reviewStat.game.id.eq(game.id))
+                .join(tag).on(tag.id.eq(game.id))
+                .join(playtime).on(playtime.id.eq(game.id))
+                .join(reviewStat).on(reviewStat.game.id.eq(game.id))
                 .where(
                         gameExpressions.containsTag(tagName),
                         playtime.mainStory.between(5, maxPlaytime),
@@ -426,7 +422,7 @@ public class GameRepositoryImpl implements GameRepositoryCustom {
         Long count = queryFactory
                 .select(game.count())
                 .from(game)
-                .join(tag).on(tag.game.id.eq(game.id))
+                .join(tag).on(tag.id.eq(game.id))
                 .where(
                         gameExpressions.containsGenre(genre),
                         gameExpressions.containsTheme(theme),
@@ -449,7 +445,7 @@ public class GameRepositoryImpl implements GameRepositoryCustom {
         List<Long> gameIds = queryFactory
                 .select(game.id)
                 .from(game)
-                .leftJoin(reviewStat).on(reviewStat.game.id.eq(game.id))
+                .leftJoin(reviewStat).on(reviewStat.id.eq(game.id))
                 .where(
                         gameExpressions.titleContains(condition.keyword()),
                         gameExpressions.tagExists(condition),
@@ -474,7 +470,7 @@ public class GameRepositoryImpl implements GameRepositoryCustom {
                         reviewStat
                 ))
                 .from(game)
-                .leftJoin(reviewStat).on(reviewStat.game.id.eq(game.id))
+                .leftJoin(reviewStat).on(reviewStat.id.eq(game.id))
                 .where(game.id.in(gameIds))
                 .orderBy(gameExpressions.getOrderSpecifiers(condition.sort(), condition.keyword()))
                 .fetch();
@@ -495,18 +491,23 @@ public class GameRepositoryImpl implements GameRepositoryCustom {
     }
 
     /**
-     * 현재 DB 내 가격 범위 조회
-     * */
+     * DB 내 실판매가 최소/최대 범위 조회
+     */
     @Override
     public SearchFilterMetadataResponse.PriceRange getPriceRange() {
+        // 할인가가 없으면 정가를 사용하도록 실판매가 기준 정의
+        NumberExpression<Integer> effectivePrice = storeDetail.discountPrice.coalesce(storeDetail.originalPrice);
+
+        // 최소/최대 실판매가 집계 쿼리 실행
         Tuple result = queryFactory
-                .select(storeDetail.discountPrice.min(), storeDetail.discountPrice.max())
+                .select(effectivePrice.min(), effectivePrice.max())
                 .from(storeDetail)
                 .fetchOne();
 
+        // 조회 결과가 null이면 0으로 처리하여 DTO 반환
         return new SearchFilterMetadataResponse.PriceRange(
-                result != null ? result.get(0, Integer.class) : 0,
-                result != null ? result.get(1, Integer.class) : 0
+                result != null && result.get(0, Integer.class) != null ? result.get(0, Integer.class) : 0,
+                result != null && result.get(1, Integer.class) != null ? result.get(1, Integer.class) : 0
         );
     }
 
@@ -541,9 +542,9 @@ public class GameRepositoryImpl implements GameRepositoryCustom {
                         tag
                 ))
                 .from(game)
-                .leftJoin(reviewStat).on(reviewStat.game.id.eq(game.id))
-                .leftJoin(playtime).on(playtime.game.id.eq(game.id))
-                .leftJoin(tag).on(tag.game.id.eq(game.id))
+                .leftJoin(reviewStat).on(reviewStat.id.eq(game.id))
+                .leftJoin(playtime).on(playtime.id.eq(game.id))
+                .leftJoin(tag).on(tag.id.eq(game.id))
                 .where(game.id.eq(gameId))
                 .fetchOne();
 
@@ -604,9 +605,9 @@ public class GameRepositoryImpl implements GameRepositoryCustom {
                 )
                 .from(game)
                 // 태그, 리뷰 스탯, 플레이타임 엔티티 조인
-                .innerJoin(tag).on(tag.game.id.eq(game.id))
-                .innerJoin(reviewStat).on(reviewStat.game.id.eq(game.id))
-                .leftJoin(playtime).on(playtime.game.id.eq(game.id))    // Nullable 필드
+                .innerJoin(tag).on(tag.id.eq(game.id))
+                .innerJoin(reviewStat).on(reviewStat.id.eq(game.id))
+                .leftJoin(playtime).on(playtime.id.eq(game.id))    // Nullable 필드
                 .leftJoin(vectorEmbedding).on(vectorEmbedding.game.id.eq(game.id))
                 .where(
                         embeddingExpressions.isValidForEmbedding(),      // 임베딩 필수 데이터 검증

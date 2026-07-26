@@ -3,12 +3,16 @@ package io.github.seoleeder.owls_pick.client.oauth.provider;
 import io.github.seoleeder.owls_pick.global.response.CustomException;
 import io.github.seoleeder.owls_pick.global.response.ErrorCode;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtException;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.RestTemplate;
 
+import java.net.http.HttpClient;
+import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -24,8 +28,21 @@ public class OidcValidator {
      */
     public Map<String, Object> validateAndGetPayload(String idToken, String jwkSetUri) {
 
-        // 해당 jwkSetUri에 맞는 JwtDecoder를 가져오거나 없으면 새로 생성 (내부적으로 외부 JWK 통신 및 캐싱 수행)
-        JwtDecoder decoder = decoders.computeIfAbsent(jwkSetUri, uri -> NimbusJwtDecoder.withJwkSetUri(uri).build());
+        // NimbusJwtDecoder 빌더 규격상 RestOperations(RestTemplate)만 주입 가능하므로
+        // RestClientConfig와 동일한 타임아웃(Connect 3s, Read 5s)이 적용된 RestTemplate을 설정
+        JwtDecoder decoder = decoders.computeIfAbsent(jwkSetUri, uri -> {
+            HttpClient httpClient = HttpClient.newBuilder()
+                    .connectTimeout(Duration.ofSeconds(3))
+                    .build();
+            JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(httpClient);
+            requestFactory.setReadTimeout(Duration.ofSeconds(5));
+
+            RestTemplate restTemplate = new RestTemplate(requestFactory);
+
+            return NimbusJwtDecoder.withJwkSetUri(uri)
+                    .restOperations(restTemplate)
+                    .build();
+        });
 
         try {
             // 서명 검증, 만료일(exp) 검증
@@ -39,7 +56,7 @@ public class OidcValidator {
             log.warn("유효하지 않은 OIDC ID Token 입니다: {}", e.getMessage());
             throw new CustomException(ErrorCode.INVALID_TOKEN);
         } catch (Exception e) {
-            // ✨ 2차 변환: 디코더 생성 중 외부 JWK 통신이 터지는 등의 예상치 못한 에러
+            // 디코더 생성 중 외부 JWK 통신이 터지는 등의 예상치 못한 에러
             log.error("OIDC 검증 중 서버 에러 발생", e);
             throw new CustomException(ErrorCode.INTERNAL_SERVER_ERROR);
         }

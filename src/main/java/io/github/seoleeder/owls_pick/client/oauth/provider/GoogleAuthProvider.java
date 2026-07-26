@@ -10,6 +10,7 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
 
 import java.util.Map;
@@ -19,8 +20,8 @@ import java.util.Map;
 public class GoogleAuthProvider extends  AbstractSocialProvider{
     private final OidcValidator oidcValidator;
 
-    protected GoogleAuthProvider(SocialProperties socialProperties, OidcValidator oidcValidator) {
-        super("google", socialProperties);
+    protected GoogleAuthProvider(SocialProperties socialProperties, OidcValidator oidcValidator, RestClient restClient) {
+        super("google", socialProperties, restClient);
         this.oidcValidator = oidcValidator;
     }
 
@@ -43,10 +44,10 @@ public class GoogleAuthProvider extends  AbstractSocialProvider{
         } catch (RestClientResponseException e) {
             log.error("[Google OAuth] 토큰 발급 실패 - Status: {}, Response: {}", e.getStatusCode(), e.getResponseBodyAsString());
             if (e.getStatusCode().is4xxClientError()) {
-                // 400번대 에러: 프론트가 보낸 Code가 만료되었거나 잘못된 경우
+                // 4xx error: 프론트가 보낸 Code가 만료되었거나 잘못된 경우
                 throw new CustomException(ErrorCode.INVALID_AUTHORIZATION_CODE);
             } else {
-                // 500번대 에러: 구글 서버 장애
+                // 5xx error: 구글 서버 장애
                 throw new CustomException(ErrorCode.OAUTH_SERVER_ERROR);
             }
 

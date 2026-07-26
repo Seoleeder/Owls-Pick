@@ -25,7 +25,8 @@ public class WebhookService {
      * */
     @Transactional
     public void handleKakaoUnlink(String authHeader, String providerId) {
-        String expected = "KakaoAK " + socialProperties.registration().get("kakao").clientId();
+        String adminKey = socialProperties.registration().get("kakao").adminKey();
+        String expected = "KakaoAK " + adminKey;
         if (authHeader == null || !authHeader.equals(expected)) {
             log.warn("[Webhook] KAKAO Unlink Request - Unauthorized attempt detected. Header mismatch for Provider ID: {}", providerId);
             throw new CustomException(ErrorCode.UNAUTHORIZED);
@@ -46,17 +47,13 @@ public class WebhookService {
     @Transactional
     public void handleNaverUnlink(String clientId, String encryptUniqueId, String timestamp, String signature) {
         String secret = socialProperties.registration().get("naver").clientSecret();
-        try {
-            // 서명 검증과 provider Id 복호화
-            String providerId = naverWebhookProcessor.process(clientId, encryptUniqueId, timestamp, signature, secret);
 
-            log.debug("[Webhook] NAVER Unlink Request - Signature verified. Delegating to AuthService.");
+        // 서명 검증과 provider Id 복호화
+        String providerId = naverWebhookProcessor.process(clientId, encryptUniqueId, timestamp, signature, secret);
 
-            //사용자 회원 탈퇴 처리
-            authService.unlinkSocialAccount("NAVER", providerId);
-        } catch (Exception e) {
-            log.warn("[Webhook] NAVER Unlink Request - Signature verification or decryption failed. Potential spoofing attempt.", e);
-            throw new CustomException(ErrorCode.INTERNAL_SERVER_ERROR);
-        }
+        log.debug("[Webhook] NAVER Unlink Request - Signature verified. Delegating to AuthService.");
+
+        //사용자 회원 탈퇴 처리
+        authService.unlinkSocialAccount("NAVER", providerId);
     }
 }

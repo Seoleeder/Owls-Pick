@@ -10,6 +10,7 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
 
 import java.util.Map;
@@ -20,8 +21,8 @@ public class NaverAuthProvider extends AbstractSocialProvider {
 
     private final OidcValidator oidcValidator;
 
-    public NaverAuthProvider(SocialProperties socialProperties, OidcValidator oidcValidator) {
-        super("naver", socialProperties);
+    public NaverAuthProvider(SocialProperties socialProperties, OidcValidator oidcValidator, RestClient restClient) {
+        super("naver", socialProperties, restClient);
         this.oidcValidator = oidcValidator;
     }
 
@@ -33,7 +34,7 @@ public class NaverAuthProvider extends AbstractSocialProvider {
         body.add("client_secret", registration.clientSecret());
         body.add("code", code);
         body.add("state", state); // 네이버는 state 필수
-        body.add("redirect_uri", "http://localhost:8080/api/auth/login/naver");
+        body.add("redirect_uri", registration.redirectUri());
 
         try {
             return restClient.post()
@@ -82,7 +83,8 @@ public class NaverAuthProvider extends AbstractSocialProvider {
                 .body(NaverResponse.class);
 
         if (naverResponse == null || !"00".equals(naverResponse.resultcode())) {
-            throw new IllegalArgumentException("네이버 유저 정보 조회 실패");
+            log.error("[Naver OAuth] 유저 상세 정보 조회 실패 - Response: {}", naverResponse);
+            throw new CustomException(ErrorCode.OAUTH_SERVER_ERROR);
         }
 
         // 이메일 데이터가 없는 경우 처리
