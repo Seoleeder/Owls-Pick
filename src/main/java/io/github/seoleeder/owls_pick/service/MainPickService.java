@@ -1,6 +1,5 @@
 package io.github.seoleeder.owls_pick.service;
 
-import com.querydsl.core.Tuple;
 import io.github.seoleeder.owls_pick.dto.response.UpcomingGameResponse;
 import io.github.seoleeder.owls_pick.dto.response.section.PersonalizedSectionResponse;
 import io.github.seoleeder.owls_pick.dto.response.section.UpcomingSectionResponse;
@@ -16,12 +15,10 @@ import io.github.seoleeder.owls_pick.global.util.GameResponseConverter;
 import io.github.seoleeder.owls_pick.repository.GameRepository;
 import io.github.seoleeder.owls_pick.repository.UserRepository;
 import io.github.seoleeder.owls_pick.repository.dto.GameWithReviewStatDto;
-import io.github.seoleeder.owls_pick.repository.dto.TagArrayDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.web.PagedModel;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -63,43 +60,19 @@ public class MainPickService {
     @Scheduled(cron = "0 0 4 * * *")
     public void refreshValidCombinations() {
         log.info("[MainPick] Updating valid genre-theme combinations in memory cache...");
+        List<GenreThemePair> newCombinations = new ArrayList<>();
 
-        // 유효 조합 기준 최소 게임 수 조회
+        // 유효 조합의 기준이 되는 해당 조합의 최소 게임 수
         int minRequired = curationProps.intersection().minRequiredGames();
 
-        // 출시된 게임의 전체 태그 배열 조회
-        List<TagArrayDto> tagDtos = gameRepository.findTagArraysForReleasedGames();
-        Map<GenreThemePair, Long> frequencyMap = new HashMap<>();
+        for (GenreType genre : GenreType.values()) {
+            for (ThemeType theme : ThemeType.values()) {
+                if (theme == ThemeType.EROTIC) continue; // 성인 테마는 교집합에서 배제
 
-        // 태그 배열을 순회하며 장르-테마 교집합 카운트
-        for (TagArrayDto dto : tagDtos) {
-            List<String> genres = dto.genres();
-            List<String> themes = dto.themes();
-
-            if (genres == null || themes == null) continue;
-
-            for (String genreStr : genres) {
-                for (String themeStr : themes) {
-                    try {
-                        GenreType genre = GenreType.valueOf(genreStr);
-                        ThemeType theme = ThemeType.valueOf(themeStr);
-
-                        if (theme == ThemeType.EROTIC) continue; // 성인 테마는 교집합에서 배제
-
-                        GenreThemePair pair = new GenreThemePair(genre, theme);
-                        frequencyMap.put(pair, frequencyMap.getOrDefault(pair, 0L) + 1L);
-                    } catch (IllegalArgumentException e) {
-                        log.warn("[MainPick] Ignore unmapped tag data: Genre={}, Theme={}", genreStr, themeStr);
-                    }
+                long count = gameRepository.countGamesByGenreAndTheme(genre, theme);
+                if (count >= minRequired) {
+                    newCombinations.add(new GenreThemePair(genre, theme));
                 }
-            }
-        }
-
-        // 최소 게임 수를 충족하는 조합 필터링
-        List<GenreThemePair> newCombinations = new ArrayList<>();
-        for (Map.Entry<GenreThemePair, Long> entry : frequencyMap.entrySet()) {
-            if (entry.getValue() >= minRequired) {
-                newCombinations.add(entry.getKey());
             }
         }
 
