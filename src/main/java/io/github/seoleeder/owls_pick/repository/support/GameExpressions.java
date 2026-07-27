@@ -146,22 +146,6 @@ public class GameExpressions {
         return genreMatchCount.add(themeMatchCount);
     }
 
-    // --- 집계 연산을 위한 unnest 함수 표현식 ---
-
-    /**
-     * 장르 배열을 개별 행으로 평탄화
-     */
-    public StringExpression unnestGenres() {
-        return Expressions.stringTemplate("function('unnest', {0})", tag.genres);
-    }
-
-    /**
-     * 테마 배열을 개별 행으로 평탄화
-     */
-    public StringExpression unnestThemes() {
-        return Expressions.stringTemplate("function('unnest', {0})", tag.themes);
-    }
-
     // --- EXISTS 조건 서브쿼리 ---
 
     /**
