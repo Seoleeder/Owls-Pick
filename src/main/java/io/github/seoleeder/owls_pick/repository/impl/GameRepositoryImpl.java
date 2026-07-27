@@ -21,6 +21,7 @@ import io.github.seoleeder.owls_pick.repository.dto.GameDetailCoreDto;
 import io.github.seoleeder.owls_pick.repository.dto.GameWithReviewStatDto;
 import io.github.seoleeder.owls_pick.entity.game.enums.GenreType;
 import io.github.seoleeder.owls_pick.entity.game.enums.ThemeType;
+import io.github.seoleeder.owls_pick.repository.dto.TagArrayDto;
 import io.github.seoleeder.owls_pick.repository.support.EmbeddingExpressions;
 import io.github.seoleeder.owls_pick.repository.support.GameExpressions;
 import io.github.seoleeder.owls_pick.repository.support.LocalizationExpressions;
@@ -141,22 +142,17 @@ public class GameRepositoryImpl implements GameRepositoryCustom {
     /* 사용자 맞춤 Pick 섹션 쿼리 메서드 */
 
     /**
-     * 최소 게임 수 기준을 충족하는 유효 장르-테마 교집합 산출 (unnest 및 GROUP BY 활용)
+     * 출시 완료된 게임의 장르 및 테마 배열 목록 조회
      */
     @Override
-    public List<Tuple> findValidCombinationsAggregated(int minRequired) {
-        StringExpression unnestGenres = gameExpressions.unnestGenres();
-        StringExpression unnestThemes = gameExpressions.unnestThemes();
-
+    public List<TagArrayDto> findTagArraysForReleasedGames() {
         return queryFactory
-                .select(unnestGenres, unnestThemes)
-                .from(game)
-                .join(tag).on(tag.id.eq(game.id))
-                .where(
-                        gameExpressions.isReleased()
-                )
-                .groupBy(unnestGenres, unnestThemes)
-                .having(game.id.count().goe((long) minRequired))
+                .select(Projections.constructor(TagArrayDto.class,
+                        tag.genres,
+                        tag.themes))
+                .from(tag)
+                .join(game).on(tag.id.eq(game.id))
+                .where(gameExpressions.isReleased())
                 .fetch();
     }
 
