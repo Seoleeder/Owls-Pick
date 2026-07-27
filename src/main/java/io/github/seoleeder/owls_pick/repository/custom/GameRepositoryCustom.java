@@ -1,6 +1,5 @@
 package io.github.seoleeder.owls_pick.repository.custom;
 
-import com.querydsl.core.Tuple;
 import io.github.seoleeder.owls_pick.dto.embedding.EmbeddingSourceDto;
 import io.github.seoleeder.owls_pick.dto.request.GameSearchConditionRequest;
 import io.github.seoleeder.owls_pick.dto.response.SearchFilterMetadataResponse;
@@ -10,7 +9,6 @@ import io.github.seoleeder.owls_pick.repository.dto.GameDetailCoreDto;
 import io.github.seoleeder.owls_pick.repository.dto.GameWithReviewStatDto;
 import io.github.seoleeder.owls_pick.entity.game.enums.GenreType;
 import io.github.seoleeder.owls_pick.entity.game.enums.ThemeType;
-import io.github.seoleeder.owls_pick.repository.dto.TagArrayDto;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -49,9 +47,6 @@ public interface GameRepositoryCustom {
     Page<GameWithReviewStatDto> findGamesByTheme(ThemeType theme, GameSortType sort, Pageable pageable);
 
     // --- 맞춤형 Pick 섹션 ---
-
-    // 출시 완료된 게임의 장르 및 테마 배열 목록 조회
-    List<TagArrayDto> findTagArraysForReleasedGames();
 
     // 출시 예정 기대작 게임 조회
     Page<Game> findUpcomingGames(LocalDate today, LocalDate maxDate, int minHypes, Pageable pageable);

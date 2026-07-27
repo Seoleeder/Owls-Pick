@@ -4,7 +4,6 @@ import com.querydsl.core.Tuple;
 import com.querydsl.core.types.Projections;
 import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.core.types.dsl.NumberExpression;
-import com.querydsl.core.types.dsl.StringExpression;
 import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQuery;
 import com.querydsl.jpa.impl.JPAQueryFactory;
@@ -21,7 +20,6 @@ import io.github.seoleeder.owls_pick.repository.dto.GameDetailCoreDto;
 import io.github.seoleeder.owls_pick.repository.dto.GameWithReviewStatDto;
 import io.github.seoleeder.owls_pick.entity.game.enums.GenreType;
 import io.github.seoleeder.owls_pick.entity.game.enums.ThemeType;
-import io.github.seoleeder.owls_pick.repository.dto.TagArrayDto;
 import io.github.seoleeder.owls_pick.repository.support.EmbeddingExpressions;
 import io.github.seoleeder.owls_pick.repository.support.GameExpressions;
 import io.github.seoleeder.owls_pick.repository.support.LocalizationExpressions;
@@ -87,6 +85,25 @@ public class GameRepositoryImpl implements GameRepositoryCustom {
                 .fetch();
     }
 
+    /**
+     * 특정 장르 + 테마의 조합을 가진 게임 수 집계
+     * */
+    @Override
+    public long countGamesByGenreAndTheme(GenreType genre, ThemeType theme) {
+        Long count = queryFactory
+                .select(game.count())
+                .from(game)
+                .join(tag).on(tag.id.eq(game.id))
+                .where(
+                        gameExpressions.containsGenre(genre),
+                        gameExpressions.containsTheme(theme),
+                        gameExpressions.isReleased()
+                )
+                .fetchOne();
+
+        return count == null ? 0L : count;
+    }
+
     /* 장르/테마 태그 기반 탐색 쿼리 메서드 */
 
     /**
@@ -141,20 +158,6 @@ public class GameRepositoryImpl implements GameRepositoryCustom {
 
     /* 사용자 맞춤 Pick 섹션 쿼리 메서드 */
 
-    /**
-     * 출시 완료된 게임의 장르 및 테마 배열 목록 조회
-     */
-    @Override
-    public List<TagArrayDto> findTagArraysForReleasedGames() {
-        return queryFactory
-                .select(Projections.constructor(TagArrayDto.class,
-                        tag.genres,
-                        tag.themes))
-                .from(tag)
-                .join(game).on(tag.id.eq(game.id))
-                .where(gameExpressions.isReleased())
-                .fetch();
-    }
 
     /**
      * 출시 예정인 게임 중, Hype 조건을 충족하는 게임 조회
@@ -407,25 +410,6 @@ public class GameRepositoryImpl implements GameRepositoryCustom {
 
         // Redis 역직렬화 호환성을 위해 RestPage 타입으로 래핑 후 반환
         return new RestPage<>(page);
-    }
-
-    /**
-     * 특정 장르 + 테마의 조합을 가진 게임 수 집계
-     * */
-    @Override
-    public long countGamesByGenreAndTheme(GenreType genre, ThemeType theme) {
-        Long count = queryFactory
-                .select(game.count())
-                .from(game)
-                .join(tag).on(tag.id.eq(game.id))
-                .where(
-                        gameExpressions.containsGenre(genre),
-                        gameExpressions.containsTheme(theme),
-                        gameExpressions.isReleased()
-                )
-                .fetchOne();
-
-        return count == null ? 0L : count;
     }
 
     /* 게임 통합 검색 및 필터 메타데이터 쿼리 메서드 */
