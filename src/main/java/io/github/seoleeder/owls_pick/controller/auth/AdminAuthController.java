@@ -12,32 +12,31 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/dev/auth")
+@RequestMapping("/admin/auth")
 @RequiredArgsConstructor
-@Tag(name = "[DEV] 소셜 로그인 API", description = "운영(prod) 환경에서는 비활성화되는 개발용 백도어 API입니다.")
-public class DevAuthController {
+@Tag(name = "[ADMIN] 관리자 인증 API", description = "X-ADMIN-KEY 헤더 인증 기반 관리자 전용 회원 관리 및 토큰 발급 API")
+public class AdminAuthController {
 
     private final AuthService authService;
 
     @Operation(
-            summary = "개발용 백도어 로그인",
-            description = "소셜 인증 과정을 생략하고, 원하는 이메일로 즉시 로그인(가입)하여 JWT 토큰 발급"
+            summary = "관리자 바이패스 로그인",
+            description = "소셜 인가 과정을 생략하고 이메일 기반으로 회원가입/로그인 및 JWT 토큰 발급"
     )
     @PostMapping("/bypass/login")
     public CommonResponse<LoginResponse> bypassLogin(
-            // 이메일을 안 보내면 기본값으로 test@kakao.com 삽입
-            @RequestParam(defaultValue = "test@kakao.com") String email) {
+            @RequestParam(defaultValue = "admin@kakao.com") String email) {
 
         LoginResponse response = authService.bypassLogin(email);
         return CommonResponse.ok(response);
     }
 
     @Operation(
-            summary = "개발용 백도어 로그아웃",
-            description = "백도어로 로그인한 이메일로 로그아웃 진행"
+            summary = "관리자 바이패스 로그아웃",
+            description = "지정한 이메일의  Refresh Token을 삭제하여 로그아웃 처리"
     )
     @PostMapping("/bypass/logout")
-    public CommonResponse<LoginResponse> bypassLogout(
+    public CommonResponse<Void> bypassLogout(
             @RequestParam String email) {
 
         authService.bypassLogout(email);
