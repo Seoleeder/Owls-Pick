@@ -28,9 +28,11 @@ public class LocalizationController {
     private final LocalizationService localizationService;
     private final KeywordLocalizationService keywordLocalizationService;
 
+    // --- 게임 데이터(설명/스토리라인) 한글화 파이프라인 ---
+
     @Operation(
-            summary = "게임 데이터 대량 한글화 수동 트리거",
-            description = "한글화되지 않은 게임 데이터(설명, 스토리라인)들을 지정된 단위(Chunk)만큼 가져와 한글화 로직 가동",
+            summary = "게임 데이터 한글화 단일 청크 트리거",
+            description = "한글화되지 않은 게임 데이터들을 지정된 단위(Chunk)만큼 가져와 파이프라인 1회 가동",
             parameters = {
                     @Parameter(name = "X-ADMIN-KEY", description = "관리자 키", required = true, in = ParameterIn.HEADER)
             }
@@ -156,8 +158,75 @@ public class LocalizationController {
     }
 
     @Operation(
-            summary = "게임 키워드 한글화 수동 트리거",
-            description = "한글화되지 않은 영문 키워드를 지정된 단위(Chunk)만큼 가져와 1회성 전체 한글화 파이프라인 실행",
+            summary = "게임 데이터 전체 한글화 백그라운드 트리거 (Custom Chunk Size)",
+            description = "청크 사이즈를 직접 지정하여, 한글화 대상 게임이 없을 때까지 무한 루프 파이프라인 가동",
+            parameters = {
+                    @Parameter(name = "X-ADMIN-KEY", description = "관리자 키", required = true, in = ParameterIn.HEADER)
+            }
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "커스텀 설정 백그라운드 파이프라인 가동 성공",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(value = """
+                            {
+                              "success": true,
+                              "data": "Custom Background Game Localization Pipeline Started",
+                              "error": null
+                            }
+                            """)
+                    )),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "관리자 인증 실패 (X-ADMIN-KEY 누락 또는 불일치)",
+                    content = @Content(mediaType = "application/json",
+                            examples = @ExampleObject(value = """
+                                    {
+                                      "success": false,
+                                      "data": null,
+                                      "error": {
+                                        "code": 40100,
+                                        "message": "권한이 없습니다."
+                                      }
+                                    }
+                                    """)
+                    )),
+            @ApiResponse(
+                    responseCode = "500",
+                    description = "서버 내부 오류",
+                    content = @Content(mediaType = "application/json",
+                            examples = @ExampleObject(value = """
+                                    {
+                                      "success": false,
+                                      "data": null,
+                                      "error": {
+                                        "code": 50000,
+                                        "message": "서버 내부 오류입니다."
+                                      }
+                                    }
+                                    """))
+            )
+    })
+    @PostMapping("/run-all/custom")
+    public CommonResponse<String> runAllLocalizationWithCustomChunk(
+            @RequestParam int chunkSize
+    ) {
+        log.info("[Admin] Manual trigger requested for ALL game localization with custom chunk size: {}", chunkSize);
+        CompletableFuture.runAsync(() -> {
+            try {
+                localizationService.runPipeline(chunkSize);
+            } catch (Exception e) {
+                log.error("[Admin] Custom Game Localization Pipeline Failed: {}", e.getMessage());
+            }
+        });
+        return CommonResponse.ok("Custom Background Game Localization Pipeline Started");
+    }
+
+    @Operation(
+            summary = "게임 키워드 한글화 단일 청크 트리거",
+            description = "한글화되지 않은 영문 키워드를 지정된 단위(Chunk)만큼 가져와 1회성 파이프라인 가동",
             parameters = {
                     @Parameter(name = "X-ADMIN-KEY", description = "관리자 키", required = true, in = ParameterIn.HEADER)
             }
@@ -286,6 +355,75 @@ public class LocalizationController {
         });
 
         return CommonResponse.ok("Background Keyword Localization Pipeline Started");
+    }
+
+    @Operation(
+            summary = "게임 키워드 전체 한글화 백그라운드 트리거 (Custom Chunk Size)",
+            description = "청크 사이즈를 직접 지정하여, 요약 대상 키워드가 없을 때까지 무한 루프 파이프라인 가동",
+            parameters = {
+                    @Parameter(name = "X-ADMIN-KEY", description = "관리자 키", required = true, in = ParameterIn.HEADER)
+            }
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "커스텀 설정 백그라운드 키워드 파이프라인 가동 성공",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(value = """
+                                    {
+                                      "success": true,
+                                      "data": "Custom Background Keyword Localization Pipeline Started",
+                                      "error": null
+                                    }
+                                    """)
+                    )),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "관리자 인증 실패 (X-ADMIN-KEY 누락 또는 불일치)",
+                    content = @Content(mediaType = "application/json",
+                            examples = @ExampleObject(value = """
+                                    {
+                                      "success": false,
+                                      "data": null,
+                                      "error": {
+                                        "code": 40100,
+                                        "message": "권한이 없습니다."
+                                      }
+                                    }
+                                    """)
+                    )),
+            @ApiResponse(
+                    responseCode = "500",
+                    description = "서버 내부 오류",
+                    content = @Content(mediaType = "application/json",
+                            examples = @ExampleObject(value = """
+                                    {
+                                      "success": false,
+                                      "data": null,
+                                      "error": {
+                                        "code": 50000,
+                                        "message": "서버 내부 오류입니다."
+                                      }
+                                    }
+                                    """))
+            )
+    })
+    @PostMapping("/run-all-keywords/custom")
+    public CommonResponse<String> runAllKeywordLocalizationWithCustomChunk(
+            @RequestParam int chunkSize
+    ) {
+        log.info("[Admin] Manual trigger requested for ALL Keyword Localization with custom chunk size: {}", chunkSize);
+        CompletableFuture.runAsync(() -> {
+            try {
+                // isSingleRun = false
+                int totalProcessed = keywordLocalizationService.runPipeline(chunkSize, false);
+                log.info("[Admin] Custom Background Keyword Localization Finished. Total Processed: {}", totalProcessed);
+            } catch (Exception e) {
+                log.error("[Admin] Custom Keyword Localization Pipeline Failed: {}", e.getMessage());
+            }
+        });
+        return CommonResponse.ok("Custom Background Keyword Localization Pipeline Started");
     }
 
     // 응답용 내부 record DTO
