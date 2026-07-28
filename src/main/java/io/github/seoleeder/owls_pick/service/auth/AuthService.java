@@ -232,11 +232,11 @@ public class AuthService {
     }
 
     /**
-     *  [개발용 백도어 로그인] 소셜 서비스와의 통신 없이 이메일만으로 강제 가입/로그인 및 토큰 발급
+     *  [관리자 바이패스 로그인] 소셜 인증 절차를 우회하여 이메일 기반 사용자 생성/조회 및 JWT 토큰 발급
      */
     @Transactional
     public LoginResponse bypassLogin(String email) {
-        // 이메일로 사용자 조회 (없으면 테스트용 이름으로 강제 가입 처리)
+        // 이메일 기반 사용자 조회 (미존재 시 관리자 전용 사용자 신규 생성)
         User user = userRepository.findByEmail(email)
                 .orElseGet(() -> {
                     User newUser = User.builder()
@@ -247,6 +247,22 @@ public class AuthService {
                     User savedUser = userRepository.save(newUser);
                     log.info("[Auth-Bypass] Test user auto-registered - UserId: {}, Email: {}", savedUser.getId(), email);
                     return savedUser;
+                });
+
+        // 이메일 기반 프로바이더 동적 파싱
+        SocialAccount.Provider provider = parseProviderFromEmail(email);
+
+        // SocialAccount 미존재 시 자동 생성
+        socialAccountRepository.findById(user.getId())
+                .orElseGet(() -> {
+                    SocialAccount dummyAccount = SocialAccount.builder()
+                            .user(user)
+                            .provider(provider)
+                            .providerId("ADMIN_BYPASS_" + user.getId())
+                            .build();
+                    SocialAccount savedAccount = socialAccountRepository.save(dummyAccount);
+                    log.info("[Auth-Bypass] SocialAccount generated for admin user. UserId: {}", user.getId());
+                    return savedAccount;
                 });
 
         // JWT 토큰 발급
@@ -264,7 +280,7 @@ public class AuthService {
             );
             log.info("[Auth-Bypass] Test user login executed - UserId: {}", user.getId());
         } catch (Exception e) {
-            log.error("[Auth-Bypass] Redis communication failed during backdoor login", e);
+            log.error("[Auth-Bypass] Redis communication failed during admin bypass login - UserId: {}", user.getId(), e);
             throw new CustomException(ErrorCode.INTERNAL_SERVER_ERROR);
         }
 
@@ -278,8 +294,8 @@ public class AuthService {
 
 
     /**
-     * [개발용 백도어 로그아웃]
-     * 이메일만으로 Redis에서 강제 로그아웃
+     * [관리자 바이패스 로그아웃]
+     * 이메일 기반 사용자 조회 후 Redis 내 Refresh Token 삭제
      */
     @Transactional
     public void bypassLogout(String email) {
@@ -314,5 +330,30 @@ public class AuthService {
             log.error("[Social Unlink] 웹훅 처리 중 오류 발생: {}", e.getMessage());
             // 웹훅 응답은 무조건 200
         }
+    }
+
+    /**
+     * [관리자 바이패스 전용] 이메일 도메인 기반으로 Provider 추론
+     * (도메인 판별 불가 시 기본값 KAKAO 반환)
+     */
+    private SocialAccount.Provider parseProviderFromEmail(String email) {
+        if (email == null || !email.contains("@")) {
+            return SocialAccount.Provider.KAKAO;
+        }
+
+        String domain = email.substring(email.indexOf("@") + 1).toLowerCase();
+
+        if (domain.contains("gmail") || domain.contains("google")) {
+            return SocialAccount.Provider.GOOGLE;
+        }
+        if (domain.contains("naver")) {
+            return SocialAccount.Provider.NAVER;
+        }
+        if (domain.contains("kakao")) {
+            return SocialAccount.Provider.KAKAO;
+        }
+
+        // 기타 도메인은 기본값 적용
+        return SocialAccount.Provider.KAKAO;
     }
 }
