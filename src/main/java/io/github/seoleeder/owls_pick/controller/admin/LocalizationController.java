@@ -279,7 +279,7 @@ public class LocalizationController {
             )
     })
     @PostMapping("/bulk-run-keywords")
-    public CommonResponse<LocalizationResultDto> runCustomKeywordLocalization(
+    public CommonResponse<LocalizationResultDto> runBulkKeywordLocalization(
             @RequestParam(defaultValue = "200") int chunkSize
     ) {
         log.info("[Admin] Manual trigger requested for Custom Keyword Localization with chunk size: {}", chunkSize);
@@ -342,7 +342,7 @@ public class LocalizationController {
             )
     })
     @PostMapping("/run-keywords")
-    public CommonResponse<String> runKeywordLocalization() {
+    public CommonResponse<String> runAllKeywordLocalization() {
         log.info("[Admin] Manual trigger requested for Default Keyword Localization.");
 
         CompletableFuture.runAsync(() -> {
