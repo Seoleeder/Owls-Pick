@@ -43,8 +43,8 @@ public class RestClientConfig {
 
         JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory(httpClient);
 
-        // 네트워크 지연 및 AI 생성 시간 변동폭을 고려하여 응답 대기 30초 제한
-        factory.setReadTimeout(Duration.ofSeconds(30));
+        // 네트워크 지연 및 AI 생성 시간 변동폭을 고려하여 응답 대기 120초 제한
+        factory.setReadTimeout(Duration.ofSeconds(120));
 
         return builder
                 .requestFactory(factory)
@@ -97,8 +97,8 @@ public class RestClientConfig {
     public RestClient chatRestClient(RestClient.Builder builder) {
         HttpClient httpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(3)).build();
         JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory(httpClient);
-        // 챗봇 환경 특성을 고려하여 타임아웃 30초 제한
-        factory.setReadTimeout(Duration.ofSeconds(30));
+        // 벡터 임베딩 유사도 검색 및 생성 소요 시간을 고려하되, 유저 대기 한계선을 위해 60초 제한
+        factory.setReadTimeout(Duration.ofSeconds(60));
 
         return builder
                 .requestFactory(factory)
