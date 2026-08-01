@@ -33,6 +33,7 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -74,7 +75,7 @@ public class ChatService {
     /**
      * 트랜잭션 내부에서 로드된 데이터(세션, 대화 내역)를 한 번에 외부로 반환하기 위한 레코드
      */
-    private record ChatInitData(ChatSession session, List<ChatHistoryDto> history) {}
+    private record ChatInitData(Long sessionId, List<ChatHistoryDto> history) {}
 
     /**
      * RAG 기반 실시간 게임 추천 챗봇 파이프라인
@@ -86,13 +87,13 @@ public class ChatService {
             throw new CustomException(ErrorCode.INVALID_INPUT_VALUE);
         }
 
-        // 동시성 제어 및 트래픽 제한 검증을 위한 분산 락 획득
+        // 유저 단위 동시성 제어 및 트래픽 제한용 분산 락 점유
         chatTrafficService.checkTrafficAndAcquireLock(userId);
 
         try {
             boolean isNewSession = request.sessionId() == null;
 
-            // 신규 세션일 경우 임시 타이틀 할당
+            // 신규 세션 초기 식별용 임시 타이틀 생성
             String initialTitle = null;
             if (isNewSession) {
                 initialTitle = request.userMessage().length() > MAX_TITLE_LENGTH
@@ -102,30 +103,32 @@ public class ChatService {
 
             final String finalTitle = initialTitle;
 
-            // 채팅 세션 생성 및 유저 메시지 저장 트랜잭션 분리 수행
+            // 선행 트랜잭션(세션 및 유저 메시지 저장) 분리 실행
             ChatInitData chatInitData = transactionTemplate.execute(status -> {
 
                 // 채팅 세션 및 최근 대화 내역 조회
                 ChatSession session = getOrCreateSession(userId, request, finalTitle);
-                List<ChatHistoryDto> history = getChatHistory(session.getId(), props.chat().historyLimit());
+                List<ChatHistoryDto> history = isNewSession
+                        ? Collections.emptyList()
+                        : getChatHistory(session.getId(), props.chat().historyLimit());
 
-                // 해당 세션에 유저의 채팅 메시지 저장
-                saveChatMessage(session, ChatRole.USER, request.userMessage());
+                // 유저 채팅 저장
+                saveChatMessage(session.getId(), ChatRole.USER, request.userMessage());
 
-                return new ChatInitData(session, history);
+                return new ChatInitData(session.getId(), history);
             });
 
             if (chatInitData == null) throw new CustomException(ErrorCode.INTERNAL_SERVER_ERROR);
 
-            ChatSession session = chatInitData.session();
+            Long sessionId = chatInitData.sessionId();
             List<ChatHistoryDto> history = chatInitData.history();
 
-            // 신규 세션인 경우 DB 커밋 완료 후 비동기 타이틀 생성 이벤트 발행
+            // 신규 세션 트랜잭션 커밋 완료 후 비동기 타이틀 생성 이벤트 발행
             if (isNewSession) {
-                eventPublisher.publishEvent(new SessionTitleGenerateEvent(session.getId(), request.userMessage()));
+                eventPublisher.publishEvent(new SessionTitleGenerateEvent(sessionId, request.userMessage()));
             }
 
-            // 메시지 벡터 임베딩 추출 (사용자 메시지 + 최근 대화 내역)
+            // 유저 메시지 벡터 임베딩 추출 (사용자 메시지 + 최근 대화 내역)
             float[] queryVector = fetchQueryEmbedding(history, request.userMessage());
 
             // 벡터 유사도 기반 상위 연관 게임 검색
@@ -144,8 +147,7 @@ public class ChatService {
                 }
             }
 
-            // 연관 게임의 원본 메타데이터 추출
-            // 유사도 검색 실패 시 에러 대신 빈 컨텍스트를 넘겨 일반 답변으로 유도
+            // 검색된 연관 게임 원본 텍스트 추출 (검색 실패 시 빈 배열 할당으로 일반 응답 유도)
             List<String> contexts = similarGames.isEmpty()
                     ? Collections.emptyList()
                     : similarGames.stream().map(VectorEmbedding::getSourceText).toList();
@@ -155,10 +157,10 @@ public class ChatService {
 
             // 생성된 답변 메시지 저장
             transactionTemplate.executeWithoutResult(status ->
-                    saveChatMessage(session, ChatRole.ASSISTANT, reply)
+                    saveChatMessage(sessionId, ChatRole.ASSISTANT, reply)
             );
 
-            return new ChatResponse(session.getId(), reply);
+            return new ChatResponse(sessionId, reply);
         } finally {
             // 로직 수행 완료 및 예외 발생 여부와 무관하게 점유한 분산 락 반환
             chatTrafficService.releaseLock(userId);
@@ -170,16 +172,22 @@ public class ChatService {
      */
     private ChatSession getOrCreateSession(Long userId, ChatRequest request, String title) {
         if (request.sessionId() != null) {
-            return chatSessionRepository.findById(request.sessionId())
+            ChatSession session = chatSessionRepository.findById(request.sessionId())
                     .orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND_SESSION));
-        }
 
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND_USER));
+            // 다른 유저의 세션 접근 방지를 위한 소유권 검증
+            if (!session.getUser().getId().equals(userId)) {
+                log.warn("[ChatService] Unauthorized session access attempt. UserId: {}, SessionId: {}", userId, request.sessionId());
+                throw new CustomException(ErrorCode.NOT_SESSION_OWNER);
+            }
+            return session;
+        }
+        // User 프록시 객체 할당
+        User userProxy = userRepository.getReferenceById(userId);
 
         // 신규 세션 저장
         return chatSessionRepository.save(ChatSession.builder()
-                .user(user)
+                .user(userProxy)
                 .title(title)
                 .build());
     }
@@ -192,7 +200,7 @@ public class ChatService {
         ChatSession session = chatSessionRepository.findById(sessionId)
                 .orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND_SESSION));
 
-        // 세션 소유자 일치 여부 확인 (인가 검증)
+        // 타 유저 세션 접근 방지를 위한 소유권 검증
         if (!session.getUser().getId().equals(userId)) {
             log.warn("[ChatService] Forbidden access attempt. UserId: {}, SessionId: {}", userId, sessionId);
             throw new CustomException(ErrorCode.NOT_SESSION_OWNER);
@@ -211,25 +219,28 @@ public class ChatService {
         // 해당 세션의 최근 대화 내역 조회
         List<ChatMessage> messages = chatMessageRepository.findRecentMessages(sessionId, limit);
 
-        // DTO 변환 (시간순 정렬을 위해 수정 가능한 ArrayList로 추출)
-        List<ChatHistoryDto> dtoList = new ArrayList<>(messages.stream()
+        // DTO 변환 (시간순 정렬을 위해 ArrayList로 추출)
+        List<ChatHistoryDto> dtoList = messages.stream()
                 .map(m -> new ChatHistoryDto(
                         m.getChatRole() == ChatRole.USER ? "user" : "model",
                         m.getContent()
                 ))
-                .toList());
+                .collect(Collectors.toCollection(ArrayList::new));
 
-        // 대화 흐름을 순서대로 파악할 수 있게 시간순으로 재배치
+        // 프롬프트 컨텍스트 주입을 위한 시간순(오래된 순) 역순 재배치
         Collections.reverse(dtoList);
         return dtoList;
     }
 
     /**
-     * 채팅 메시지 저장
+     * 단일 채팅 메시지 저장
      */
-    private void saveChatMessage(ChatSession session, ChatRole role, String content) {
+    private void saveChatMessage(Long sessionId, ChatRole role, String content) {
+        // 세션 프록시 객체 할당
+        ChatSession sessionProxy = chatSessionRepository.getReferenceById(sessionId);
+
         chatMessageRepository.save(ChatMessage.builder()
-                .chatSession(session)
+                .chatSession(sessionProxy)
                 .chatRole(role)
                 .content(content)
                 .build());

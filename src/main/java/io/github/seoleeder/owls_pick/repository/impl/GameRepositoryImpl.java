@@ -12,6 +12,7 @@ import io.github.seoleeder.owls_pick.dto.request.GameSearchConditionRequest;
 import io.github.seoleeder.owls_pick.dto.response.SearchFilterMetadataResponse;
 import io.github.seoleeder.owls_pick.entity.game.Game;
 import io.github.seoleeder.owls_pick.entity.game.enums.GameSortType;
+import io.github.seoleeder.owls_pick.entity.game.enums.status.EmbeddingStatus;
 import io.github.seoleeder.owls_pick.entity.genai.QGenaiFailedTask;
 import io.github.seoleeder.owls_pick.entity.genai.enums.GenaiPipelineType;
 import io.github.seoleeder.owls_pick.global.util.RestPage;
@@ -563,7 +564,6 @@ public class GameRepositoryImpl implements GameRepositoryCustom {
 
     /**
      * 임베딩 데이터가 존재하지 않는 게임 원본 데이터 조회
-     *
      */
     @Override
     public List<EmbeddingSourceDto> findGamesForEmbedding(int dbFetchSize) {
@@ -596,6 +596,54 @@ public class GameRepositoryImpl implements GameRepositoryCustom {
                 .limit(dbFetchSize)
                 .fetch().stream()
                 // DTO 매핑 및 Fallback 처리 (한글 데이터 우선)
+                .map(tuple -> EmbeddingSourceDto.of(
+                        tuple.get(game.id),
+                        tuple.get(game.title),
+                        tuple.get(game.description),
+                        tuple.get(game.descriptionKo),
+                        tuple.get(tag.genres),
+                        tuple.get(tag.themes),
+                        tuple.get(tag.keywords),
+                        tuple.get(tag.keywordsKo),
+                        tuple.get(playtime.mainStory),
+                        tuple.get(reviewStat.reviewScoreDesc),
+                        tuple.get(reviewStat.reviewSummary)
+                ))
+                .toList();
+    }
+
+    /**
+     * 임베딩 상태가 FAILED인 게임 원본 데이터 조회
+     */
+    @Override
+    public List<EmbeddingSourceDto> findFailedGamesForEmbedding(int limit) {
+        return queryFactory
+                .select(
+                        game.id,
+                        game.title,
+                        game.description,
+                        game.descriptionKo,
+                        tag.genres,
+                        tag.themes,
+                        tag.keywords,
+                        tag.keywordsKo,
+                        playtime.mainStory,
+                        reviewStat.reviewScoreDesc,
+                        reviewStat.reviewSummary
+                )
+                .from(game)
+                .innerJoin(tag).on(tag.id.eq(game.id))
+                .innerJoin(reviewStat).on(reviewStat.id.eq(game.id))
+                .leftJoin(playtime).on(playtime.id.eq(game.id))
+                .leftJoin(vectorEmbedding).on(vectorEmbedding.game.id.eq(game.id))
+                .where(
+                        embeddingExpressions.isValidForEmbedding(),
+                        // 임베딩 실패(FAILED) 이력이 있는 데이터만 한정 조회
+                        vectorEmbedding.embeddingStatus.eq(EmbeddingStatus.FAILED)
+                )
+                .orderBy(game.id.asc())
+                .limit(limit)
+                .fetch().stream()
                 .map(tuple -> EmbeddingSourceDto.of(
                         tuple.get(game.id),
                         tuple.get(game.title),

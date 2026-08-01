@@ -19,6 +19,7 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.net.URI;
@@ -56,15 +57,14 @@ public class KeywordLocalizationService {
      * 환경 변수에 설정된 기본 청크 사이즈를 사용하여 파이프라인 전체 실행
      */
     public int runPipeline() {
-        return runPipeline(props.localization().chunkSize().keyword(), false);
+        return runPipeline(props.localization().keyword().chunkSize(), false);
     }
 
     /**
      * 키워드 한글화 파이프라인 전체 실행
      */
     public int runPipeline(int chunkSize, boolean isSingleRun) {
-        log.info("Starting Keyword Localization Pipeline with chunk size {}...", chunkSize);
-
+        log.info("[GenAI] Starting Keyword Localization Pipeline with chunk size {}...", chunkSize);
         // 신규 영문 키워드 추출 및 사전 등록
         extractNewKeywords();
 
@@ -72,9 +72,9 @@ public class KeywordLocalizationService {
         int processedCount = processUnlocalizedKeywords(chunkSize, isSingleRun);
 
         // 한글화된 키워드 동기화
-        int mappedTagCount = applyLocalizationsToTags(chunkSize);
+        int mappedTagCount = applyLocalizationsToTags(props.localization().keyword().dbBatchSize());
 
-        log.info("Keyword Localization Pipeline Completed. AI Translated: {}, Tags Mapped: {}", processedCount, mappedTagCount);
+        log.info("[GenAI] Keyword Localization Pipeline Completed. AI Translated: {}, Tags Mapped: {}", processedCount, mappedTagCount);
         return processedCount;
     }
 
@@ -102,7 +102,7 @@ public class KeywordLocalizationService {
             if (!newDictionaries.isEmpty()) {
                 // 신규 키워드 목록을 키워드 사전에 저장
                 dictionaryRepository.saveAll(newDictionaries);
-                log.info("Inserted {} new keywords into Dictionary.", newDictionaries.size());
+                log.info("[GenAI] Inserted {} new keywords into Dictionary.", newDictionaries.size());
             }
         });
     }
@@ -111,7 +111,7 @@ public class KeywordLocalizationService {
      * 환경 변수에 설정된 청크 사이즈를 사용하여 키워드 한글화 실행
      */
     public void processUnlocalizedKeywords() {
-        processUnlocalizedKeywords(props.localization().chunkSize().keyword(), false);
+        processUnlocalizedKeywords(props.localization().keyword().chunkSize(), false);
     }
 
     /**
@@ -122,11 +122,11 @@ public class KeywordLocalizationService {
         // 데이터 사전에서 한글화되지 않은 영문 키워드 조회
         List<KeywordDictionary> unlocalizedEntities = dictionaryRepository.findUnlocalizedKeywords();
         if (unlocalizedEntities.isEmpty()) {
-            log.debug("No unlocalized keywords found. Task skipped.");
+            log.debug("[GenAI] No unlocalized keywords found. Task skipped.");
             return 0;
         }
 
-        log.info("Found {} unlocalized keywords. Processing in chunks of {}.", unlocalizedEntities.size(), chunkSize);
+        log.info("[GenAI] Found {} unlocalized keywords. Processing in chunks of {}.", unlocalizedEntities.size(), chunkSize);
 
         int totalProcessed = 0;
 
@@ -138,8 +138,10 @@ public class KeywordLocalizationService {
                 totalProcessed += chunk.size();
             } catch (Exception e) {
                 // 통신 장애 발생 시 청크 데이터를 실패 작업으로 기록하여 무한 루프 방지
-                log.error("Failed to process keyword localization chunk. Skipping to next chunk.", e);
-                recordFailedKeywords(chunk, GenaiFailReason.NETWORK_ERROR);
+                log.error("[GenAI] Failed to process keyword localization chunk. Skipping to next chunk.", e);
+                Map<Long, GenaiFailReason> failedTaskMap = chunk.stream()
+                        .collect(Collectors.toMap(KeywordDictionary::getId, entity -> GenaiFailReason.NETWORK_ERROR));
+                recordFailedTasks(failedTaskMap);
                 totalProcessed += chunk.size();
             }
 
@@ -152,7 +154,7 @@ public class KeywordLocalizationService {
                     Thread.sleep(props.localization().delayMs());
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
-                    log.error("Keyword Localization Chunk processing interrupted", e);
+                    log.error("[GenAI] Keyword Localization Chunk processing interrupted", e);
                     break;
                 }
             }
@@ -177,7 +179,7 @@ public class KeywordLocalizationService {
             List<Long> ids = chunkEntities.stream().map(KeywordDictionary::getId).toList();
             List<KeywordDictionary> managedEntities = dictionaryRepository.findAllById(ids);
 
-            // 번역 결과 매핑 및 상태 업데이트
+            // 한글화 결과 매핑 및 상태 업데이트
             applyLocalizationResults(managedEntities, response);
         });
     }
@@ -185,7 +187,7 @@ public class KeywordLocalizationService {
     /**
      * 한글화가 완료된 키워드 사전을 가지고 Tag의 한글 키워드 배열(keywordsKo) 업데이트
      */
-    private int applyLocalizationsToTags(int chunkSize) {
+    private int applyLocalizationsToTags(int dbBatchSize) {
 
         // 한글화 완료된 키워드 사전 데이터를 Map으로 로드
         Map<String, String> dictionaryMap = dictionaryRepository.findAll().stream()
@@ -206,8 +208,8 @@ public class KeywordLocalizationService {
 
             Integer mappedCount = transactionTemplate.execute(status -> {
 
-                // 업데이트가 필요한 Tag 엔티티를 청크만큼 조회
-                List<Tag> targetTags = tagRepository.findTagsNeedingKeywordLocalization(chunkSize);
+                // 업데이트가 필요한 Tag 엔티티를 배치 크기만큼 조회
+                List<Tag> targetTags = tagRepository.findTagsNeedingKeywordLocalization(dbBatchSize);
                 if (targetTags.isEmpty()) {
                     return 0; // 더 이상 업데이트할 태그가 없으면 종료
                 }
@@ -247,7 +249,7 @@ public class KeywordLocalizationService {
         log.info("[GenAI] Retrying {} failed Keyword Localization tasks...", failedTasks.size());
 
         // 사전에 정의된 청크 사이즈 할당
-        int chunkSize = props.localization().chunkSize().keyword();
+        int chunkSize = props.localization().keyword().chunkSize();
 
         // 대량 실패 건 방어를 위한 청크 단위 분할 처리
         for (int i = 0; i < failedTasks.size(); i += chunkSize) {
@@ -298,58 +300,112 @@ public class KeywordLocalizationService {
      * 한글화 엔진으로 HTTP 요청 전송 및 결과 반환
      */
     private KeywordLocalizationBulkResponse sendToAiEngine(KeywordLocalizationRequest request) {
+        log.info("[GenAI] Sending bulk keyword localization request for {} keywords to AI Engine...", request.keywords().size());
+
         URI targetUri = UriComponentsBuilder.fromUriString(props.fastapiUrl())
                 .path("/api/localization/keywords/bulk")
                 .build()
                 .toUri();
 
+        KeywordLocalizationBulkResponse response;
+
         try {
-            return localizationRestClient.post()
+            response = localizationRestClient.post()
                     .uri(targetUri)
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(request)
                     .retrieve()
                     .body(KeywordLocalizationBulkResponse.class);
-        } catch (Exception e) {
-            log.error("Failed to communicate with Keyword Localization Engine. Error: {}", e.getMessage());
+        } catch (RestClientException e) {
+            log.error("[GenAI] Communication Error with GenAI Server for Keyword Localization");
             throw new CustomException(ErrorCode.FASTAPI_COMMUNICATION_FAILED);
         }
+
+        if (response == null || response.localizationResults() == null) {
+            log.error("[GenAI] AI Engine returned invalid response or keyword task failed.");
+            throw new CustomException(ErrorCode.FASTAPI_COMMUNICATION_FAILED);
+        }
+
+        return response;
     }
 
     /**
      * 키워드 한글화 엔진 응답을 원본 사전 엔티티에 매핑
      */
     private void applyLocalizationResults(List<KeywordDictionary> chunkEntities, KeywordLocalizationBulkResponse response) {
-        if (response == null || response.localizationResults().isEmpty()) return;
+        if (response == null || response.localizationResults() == null || response.localizationResults().isEmpty()) {
+            return;
+        }
 
-        Map<String, String> responseMap = response.localizationResults().stream()
-                .collect(Collectors.toMap(
-                        item -> item.engName(),
-                        item -> item.korName() != null ? item.korName() : item.engName(),
-                        (existing, replacement) -> existing
-                ));
+        Map<String, KeywordDictionary> entityMap = chunkEntities.stream()
+                .collect(Collectors.toMap(KeywordDictionary::getEngName, e -> e));
 
         int successCount = 0;
-        for (KeywordDictionary entity : chunkEntities) {
-            if (responseMap.containsKey(entity.getEngName())) {
-                // 번역 누락 또는 FAILED 시 영문 원본 보존
-                entity.updateLocalization(responseMap.get(entity.getEngName()));
-                successCount++;
+        Map<Long, GenaiFailReason> partialFailures = new HashMap<>();
+
+        for (KeywordLocalizationBulkResponse.KeywordLocalizationResponse result : response.localizationResults()) {
+            KeywordDictionary entity = entityMap.get(result.engName());
+            if (entity == null) {
+                continue;
             }
+
+            // 개별 실패 사유 존재 시 매핑 생략 및 실패 작업 맵에 적재
+            if (result.errorReason() != null) {
+                GenaiFailReason failReason = parseFailReason(result.errorReason());
+                log.warn("[GenAI] AI returned failed status for Keyword: {}. Reason: {}. Recording to FailedTask.", entity.getEngName(), failReason);
+                partialFailures.put(entity.getId(), failReason);
+                continue;
+            }
+
+            // 번역 누락 또는 FAILED 시 영문 원본 보존 방지 및 DLQ 적재 처리
+            if (result.korName() == null || result.korName().trim().equalsIgnoreCase(entity.getEngName().trim())) {
+                log.warn("[GenAI] Invalid or untranslated korName received for Keyword: {}. Recording to FailedTask.", entity.getEngName());
+                partialFailures.put(entity.getId(), GenaiFailReason.INVALID_RESPONSE);
+                continue;
+            }
+
+            entity.updateLocalization(result.korName());
+            successCount++;
         }
-        log.info("Successfully localized {} keywords in current chunk.", successCount);
+
+        // 부분 실패 건을 1번의 배치 트랜잭션으로 일괄 적재
+        if (!partialFailures.isEmpty()) {
+            recordFailedTasks(partialFailures);
+            log.warn("[GenAI] Recorded {} partial failure keyword tasks to DLQ.", partialFailures.size());
+        }
+
+        log.info("[GenAI] Successfully localized {} keywords in current chunk.", successCount);
+    }
+
+    /**
+     * 실패 사유 문자열을 Enum으로 변환
+     */
+    private GenaiFailReason parseFailReason(String reasonStr) {
+        if (reasonStr == null || reasonStr.isBlank()) {
+            return GenaiFailReason.UNKNOWN_ERROR;
+        }
+        try {
+            return GenaiFailReason.valueOf(reasonStr);
+        } catch (IllegalArgumentException e) {
+            log.warn("[GenAI] Unknown GenaiFailReason received: {}. Falling back to UNKNOWN_ERROR.", reasonStr);
+            return GenaiFailReason.UNKNOWN_ERROR;
+        }
     }
 
     /**
      * 추후 재시도 및 통계를 위한 실패 대상 식별자 및 실패 사유 적재
      */
-    private void recordFailedKeywords(List<KeywordDictionary> chunkEntities, GenaiFailReason reason) {
+    private void recordFailedTasks(Map<Long, GenaiFailReason> failedTaskMap) {
+        if (failedTaskMap.isEmpty()) {
+            return;
+        }
+
         transactionTemplate.executeWithoutResult(status -> {
-            List<GenaiFailedTask> failedTasks = chunkEntities.stream()
-                    .map(entity -> GenaiFailedTask.builder()
+            List<GenaiFailedTask> failedTasks = failedTaskMap.entrySet().stream()
+                    .map(entry -> GenaiFailedTask.builder()
                             .pipelineType(GenaiPipelineType.KEYWORD_LOCALIZATION)
-                            .targetId(entity.getId())
-                            .failReason(reason)
+                            .targetId(entry.getKey())
+                            .failReason(entry.getValue())
                             .build())
                     .toList();
 
