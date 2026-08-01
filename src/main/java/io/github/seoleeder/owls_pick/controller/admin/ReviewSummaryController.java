@@ -81,7 +81,7 @@ public class ReviewSummaryController {
     })
     @PostMapping("/bulk-run")
     public CommonResponse<ReviewSummaryResultDto> runBulkSummary(
-            @RequestParam(defaultValue = "5") int batchSize
+            @RequestParam(defaultValue = "4") int batchSize
     ) {
         log.info("[Admin] Manual trigger requested for bulk review summary. Target batch size: {}", batchSize);
         int processedCount = reviewSummaryService.processSingleBatch(batchSize);

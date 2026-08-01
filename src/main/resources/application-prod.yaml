@@ -90,7 +90,7 @@ internal-api:
     localization:
       delay-ms: 10000
       game:
-        chunk-size: 30
+        chunk-size: 15
       keyword:
         chunk-size: 500
         db-batch-size: 1000
