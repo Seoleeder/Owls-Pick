@@ -88,10 +88,12 @@ internal-api:
     failed-task:
       retention-days: 14
     localization:
-      chunk-size:
-        game: 30
-        keyword: 200
       delay-ms: 10000
+      game:
+        chunk-size: 30
+      keyword:
+        chunk-size: 200
+        db-batch-size: 1000
     review:
       min-threshold: 50
       batch-size: 10

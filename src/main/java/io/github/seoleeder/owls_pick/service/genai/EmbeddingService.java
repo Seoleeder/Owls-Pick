@@ -27,7 +27,6 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 import java.net.URI;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -130,7 +129,13 @@ public class EmbeddingService {
 
         // 분할된 그룹별로 비동기 병렬 처리
         List<CompletableFuture<Void>> futures = partitions.stream()
-                .map(batch -> CompletableFuture.runAsync(() -> processSingleBatch(batch), taskExecutor))
+                .map(batch -> CompletableFuture.runAsync(() -> processSingleBatch(batch), taskExecutor)
+                        .exceptionally(ex -> {
+                            log.error("[GenAI] Unexpected system error processing embedding batch.", ex);
+                            // 예외 격리 후 해당 서브 배치를 실패 상태로 일괄 적재
+                            handleFailedEmbeddings(batch, GenaiFailReason.NETWORK_ERROR);
+                            return null;
+                        }))
                 .toList();
 
         // 현재 배치의 모든 작업이 끝날 때까지 대기
@@ -226,10 +231,12 @@ public class EmbeddingService {
                     .filter(id -> !existingEmbeddings.containsKey(id))
                     .toList();
 
-            // 신규 생성을 위한 Game 엔티티 조회
-            Map<Long, Game> newGamesMap = newGameIds.isEmpty() ? Collections.emptyMap() :
-                    gameRepository.findAllById(newGameIds).stream()
-                            .collect(Collectors.toMap(Game::getId, game -> game));
+            // 신규 생성을 위한 Game 프록시 객체 조회
+            Map<Long, Game> newGamesMap = newGameIds.stream()
+                    .collect(Collectors.toMap(
+                            id -> id,
+                            gameRepository::getReferenceById
+                    ));
 
             List<VectorEmbedding> embeddingsToSave = new ArrayList<>();
 
@@ -279,14 +286,44 @@ public class EmbeddingService {
     }
 
     /**
-     * 리스트 분할 헬퍼 메서드
+     * 임베딩 실패 작업 재시도 (스케줄러에 의해 단발성 실행)
      */
-    private <T> List<List<T>> partitionList(List<T> list, int size) {
-        List<List<T>> partitions = new ArrayList<>();
-        for (int i = 0; i < list.size(); i += size) {
-            partitions.add(new ArrayList<>(list.subList(i, Math.min(list.size(), i + size))));
+    public void retryFailedTasks() {
+        // 실패 상태인 게임을 최대 1000건 조회 (대량 실패 방어)
+        List<EmbeddingSourceDto> failedList = gameRepository.findFailedGamesForEmbedding(1000);
+
+        if (failedList.isEmpty()) {
+            return;
         }
-        return partitions;
+
+        log.info("[GenAI] Retrying {} failed vector embeddings...", failedList.size());
+
+        int apiBatchSize = props.embedding().apiBatchSize();
+        List<List<EmbeddingSourceDto>> partitions = partitionList(failedList, apiBatchSize);
+
+        // 무한 루프 없이 단발성으로 파티션 병렬 처리 수행 및 예외 격리
+        List<CompletableFuture<Void>> futures = partitions.stream()
+                .map(batch -> CompletableFuture.runAsync(() -> processSingleBatch(batch), taskExecutor)
+                        .exceptionally(ex -> {
+                            log.error("[GenAI] Unexpected system error during embedding retry.", ex);
+                            safeHandleFailedEmbeddings(batch, GenaiFailReason.NETWORK_ERROR);
+                            return null;
+                        }))
+                .toList();
+
+        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+        log.info("[GenAI] Vector embedding retry completed.");
+    }
+
+    /**
+     * 비동기 스레드 최상단에서 예외 전파를 차단하는 헬퍼 메서드
+     */
+    private void safeHandleFailedEmbeddings(List<EmbeddingSourceDto> batch, GenaiFailReason reason) {
+        try {
+            handleFailedEmbeddings(batch, reason);
+        } catch (Exception e) {
+            log.error("[GenAI] Failed to record FAILED status for embedding batch. DB Error.", e);
+        }
     }
 
     /**
@@ -313,9 +350,11 @@ public class EmbeddingService {
                     .toList();
 
             // 신규 데이터 생성을 위해 연관 Game 엔티티 조회
-            Map<Long, Game> newGamesMap = newGameIds.isEmpty() ? Collections.emptyMap() :
-                    gameRepository.findAllById(newGameIds).stream()
-                            .collect(Collectors.toMap(Game::getId, game -> game));
+            Map<Long, Game> newGamesMap = newGameIds.stream()
+                    .collect(Collectors.toMap(
+                            id -> id,
+                            gameRepository::getReferenceById
+                    ));
 
             List<VectorEmbedding> embeddingsToSave = new ArrayList<>();
 
@@ -356,5 +395,16 @@ public class EmbeddingService {
             // 실패 작업 테이블에 일괄 저장
             failedTaskRepository.saveAll(failedTasks);
         });
+    }
+
+    /**
+     * 리스트 분할 헬퍼 메서드
+     */
+    private <T> List<List<T>> partitionList(List<T> list, int size) {
+        List<List<T>> partitions = new ArrayList<>();
+        for (int i = 0; i < list.size(); i += size) {
+            partitions.add(new ArrayList<>(list.subList(i, Math.min(list.size(), i + size))));
+        }
+        return partitions;
     }
 }

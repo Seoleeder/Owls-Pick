@@ -17,9 +17,11 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.net.URI;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -52,14 +54,14 @@ public class LocalizationService {
      * 환경 변수에 설정된 기본 청크 사이즈로 한글화 파이프라인 실행
      */
     public void runPipeline() {
-        runPipeline(props.localization().chunkSize().game());
+        runPipeline(props.localization().game().chunkSize());
     }
 
     /**
      * 지정된 청크 단위로 한글화 파이프라인 연속 실행
      */
     public void runPipeline(int chunkSize) {
-        log.info("Starting Game Description Localization Pipeline with chunk size {}...", chunkSize);
+        log.info("[GenAI] Starting Game Description Localization Pipeline with chunk size {}...", chunkSize);
         int totalProcessed = 0;
 
         while (true) {
@@ -74,7 +76,7 @@ public class LocalizationService {
 
             } catch (Exception e) {
                 // 단일 청크 처리 실패 시 로그 기록 후 다음 주기로 이동
-                log.error("Failed to process localization chunk. Skipping to next cycle.", e);
+                log.error("[GenAI] Failed to process localization chunk. Skipping to next cycle.", e);
             }
 
             try {
@@ -82,11 +84,11 @@ public class LocalizationService {
                 Thread.sleep(props.localization().delayMs());
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
-                log.error("Game Description Localization Pipeline sleep interrupted", e);
+                log.error("[GenAI] Game Description Localization Pipeline sleep interrupted", e);
                 break;
             }
         }
-        log.info("Game Description Localization Pipeline Finished. Total localized games: {}", totalProcessed);
+        log.info("[GenAI] Game Description Localization Pipeline Finished. Total localized games: {}", totalProcessed);
     }
 
     /**
@@ -95,7 +97,7 @@ public class LocalizationService {
     public int processLocalizationChunk(int chunkSize) {
         List<Game> targetGames = gameRepository.findUnlocalizedGames(chunkSize);
         if (targetGames.isEmpty()) {
-            log.debug("No unlocalized games found. Task skipped.");
+            log.debug("[GenAI] No unlocalized games found. Task skipped.");
             return 0;
         }
 
@@ -120,8 +122,10 @@ public class LocalizationService {
             return result != null ? result : 0;
         } catch (Exception e) {
             // 통신 장애 시 대상 청크를 실패 작업으로 기록
-            log.error("Failed to process localization chunk. Recording {} games to DLQ.", targetGames.size());
-            recordFailedTasks(targetGames, GenaiFailReason.NETWORK_ERROR);
+            log.error("[GenAI] Failed to process localization chunk. Recording {} games to DLQ.", targetGames.size(), e);
+            Map<Long, GenaiFailReason> failedTaskMap = targetGames.stream()
+                    .collect(Collectors.toMap(Game::getId, game -> GenaiFailReason.NETWORK_ERROR));
+            recordFailedTasks(failedTaskMap);
 
             // 루프 유지를 위해 현재 청크 사이즈 반환
             return targetGames.size();
@@ -141,7 +145,7 @@ public class LocalizationService {
         log.info("[GenAI] Retrying {} failed Game Localization tasks...", failedTasks.size());
 
         // 사전에 정의된 청크 사이즈 할당
-        int chunkSize = props.localization().chunkSize().game();
+        int chunkSize = props.localization().game().chunkSize();
 
         // 실패 작업 API 한도 방어를 위한 청크 단위 분할 처리
         for (int i = 0; i < failedTasks.size(); i += chunkSize) {
@@ -196,7 +200,7 @@ public class LocalizationService {
      * 한글화 엔진으로 실제 HTTP 요청을 보내고 한글화 결과 반환
      */
     private LocalizationBulkResponse sendToAiEngine(BulkLocalizationRequest request) {
-        log.info("Sending bulk localization request for {} games to AI Engine...", request.games().size());
+        log.info("[GenAI] Sending bulk localization request for {} games to AI Engine...", request.games().size());
 
         URI targetUri = UriComponentsBuilder.fromUriString(props.fastapiUrl())
                 .path("/api/localization/games/bulk")
@@ -212,8 +216,8 @@ public class LocalizationService {
                     .body(request)
                     .retrieve()
                     .body(LocalizationBulkResponse.class);
-        } catch (Exception e) {
-            log.error("Failed to communicate with Localization Engine. Error: {}", e.getMessage());
+        } catch (RestClientException e) {
+            log.error("[GenAI] Communication Error with GenAI Server for Game Localization");
             throw new CustomException(ErrorCode.FASTAPI_COMMUNICATION_FAILED);
         }
 
@@ -234,30 +238,70 @@ public class LocalizationService {
                 .collect(Collectors.toMap(Game::getId, g -> g));
 
         int successCount = 0;
+
+        Map<Long, GenaiFailReason> partialFailures = new HashMap<>();
+
         for (LocalizationBulkResponse.ResultItem result : response.results()) {
             Game game = gameMap.get(result.gameId());
-            if (game != null) {
-                game.updateLocalization(result.descriptionKo(), result.storylineKo());
-                successCount++;
+
+            if (game == null) {
+                continue;
             }
+
+            // 개별 게임 한글화 실패 사유(errorReason) 존재 시, 매핑 생략 및 실패 작업 적재
+            if (result.errorReason() != null) {
+                GenaiFailReason failReason = parseFailReason(result.errorReason());
+                log.warn("[GenAI] AI returned failed status for Game ID: {}. Reason: {}. Recording to FailedTask.", game.getId(), failReason);
+                partialFailures.put(game.getId(), failReason);
+                continue;
+            }
+
+            game.updateLocalization(result.descriptionKo(), result.storylineKo());
+            successCount++;
         }
 
-        log.info("Successfully updated {} localized games in Database.", successCount);
+        // 청크 내 부분 실패 건이 존재하는 경우 1번의 배치 인서트로 일괄 적재
+        if (!partialFailures.isEmpty()) {
+            recordFailedTasks(partialFailures);
+            log.warn("[GenAI] Recorded {} partial failure tasks to DLQ.", partialFailures.size());
+        }
+
+        log.info("[GenAI] Successfully updated {} localized games in Database.", successCount);
         return successCount;
     }
 
     /**
-     * 추후 재시도 및 통계를 위한 실패 대상 식별자 및 실패 사유 적재
+     * 실패 사유 문자열을 Enum으로 변환
      */
-    private void recordFailedTasks(List<Game> targetGames, GenaiFailReason reason) {
+    private GenaiFailReason parseFailReason(String reasonStr) {
+        if (reasonStr == null || reasonStr.isBlank()) {
+            return GenaiFailReason.UNKNOWN_ERROR;
+        }
+        try {
+            return GenaiFailReason.valueOf(reasonStr);
+        } catch (IllegalArgumentException e) {
+            log.warn("[GenAI] Unknown GenaiFailReason received: {}. Falling back to UNKNOWN_ERROR.", reasonStr);
+            return GenaiFailReason.UNKNOWN_ERROR;
+        }
+    }
+
+    /**
+     * 추후 재시도 및 통계를 위한 실패 대상 식별자 및 사유 목록 일괄 적재
+     */
+    private void recordFailedTasks(Map<Long, GenaiFailReason> failedTaskMap) {
+        if (failedTaskMap.isEmpty()) {
+            return;
+        }
+
         transactionTemplate.executeWithoutResult(status -> {
-            List<GenaiFailedTask> failedTasks = targetGames.stream()
-                    .map(game -> GenaiFailedTask.builder()
+            List<GenaiFailedTask> failedTasks = failedTaskMap.entrySet().stream()
+                    .map(entry -> GenaiFailedTask.builder()
                             .pipelineType(GenaiPipelineType.GAME_LOCALIZATION)
-                            .targetId(game.getId())
-                            .failReason(reason)
+                            .targetId(entry.getKey())
+                            .failReason(entry.getValue())
                             .build())
                     .toList();
+
             failedTaskRepository.saveAll(failedTasks);
         });
     }

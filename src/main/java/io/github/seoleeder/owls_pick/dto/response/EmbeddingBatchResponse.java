@@ -21,16 +21,14 @@ public record EmbeddingBatchResponse(
             @Schema(description = "게임 ID", example = "12345")
             Long gameId,
 
-            @NotEmpty(message = "Vector array must not be empty")
-            @Schema(description = "Vertex AI에서 변환된 768차원 임베딩 벡터 배열")
+            @Schema(description = "임베딩 엔진에서 변환된 768차원 벡터 배열")
             float[] vector,
-
-            @NotBlank(message = "Source text must not be blank")
-            @Schema(description = "FastAPI에서 동적으로 생성된 RAG용 프롬프트 원문")
-            String sourceText,
 
             @NotBlank(message = "Embedding Status must not be blank")
             @Schema(description = "임베딩 처리 상태", example = "SUCCESS")
-            EmbeddingStatus status
+            EmbeddingStatus status,
+
+            @Schema(description = "임베딩 작업 실패 사유", example = "INSUFFICIENT_DATA")
+            String errorReason
     ) {}
 }

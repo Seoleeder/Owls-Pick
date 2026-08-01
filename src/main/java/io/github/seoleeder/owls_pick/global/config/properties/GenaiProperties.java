@@ -18,12 +18,19 @@ public record GenaiProperties(
 
     // 한글화 작업 관련 설정
     public record Localization(
-            ChunkSize chunkSize,
-            int delayMs
+            int delayMs,
+            Game game,
+            Keyword keyword
     ) {
-        public record ChunkSize(
-                int game,
-                int keyword
+        // 게임 데이터 한글화 전용 설정
+        public record Game(
+                int chunkSize
+        ) {}
+
+        // 키워드 한글화 전용 설정
+        public record Keyword(
+                int chunkSize,
+                int dbBatchSize
         ) {}
     }
 
