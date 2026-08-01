@@ -18,15 +18,15 @@ public record LocalizationBulkResponse(
     public record ResultItem(
 
             @Schema(description = "게임 ID", example = "190264")
-            @JsonProperty("game_id")
             Long gameId,
 
             @Schema(description = "한글화된 설명", example = "레드 데드 리뎀션 2는 근대화의 물결이...")
-            @JsonProperty("description_ko")
             String descriptionKo,
 
             @Schema(description = "한글화된 스토리라인", example = "1899년 미국, 법 집행관들이...")
-            @JsonProperty("storyline_ko")
-            String storylineKo
+            String storylineKo,
+
+            @Schema(description = "한글화 작업 실패 사유", example = "SAFETY_FILTER_REJECTED")
+            String errorReason
     ) {}
 }

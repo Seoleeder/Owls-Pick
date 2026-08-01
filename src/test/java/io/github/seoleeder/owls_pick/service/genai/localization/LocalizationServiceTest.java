@@ -77,9 +77,11 @@ public class LocalizationServiceTest {
 
         // GenaiProperties 초기화 및 주입
         lenient().when(genaiProperties.fastapiUrl()).thenReturn("http://localhost:8000");
-        GenaiProperties.Localization.ChunkSize chunkSize = new GenaiProperties.Localization.ChunkSize(10, 100);
-        GenaiProperties.Localization localization = new GenaiProperties.Localization(chunkSize, 1000);
-        lenient().when(genaiProperties.localization()).thenReturn(localization);
+        GenaiProperties.Localization.Game gameProps = new GenaiProperties.Localization.Game(10);
+        GenaiProperties.Localization.Keyword keywordProps = new GenaiProperties.Localization.Keyword(100, 1000);
+        GenaiProperties.Localization localizationProps = new GenaiProperties.Localization(10000, gameProps, keywordProps);
+
+        lenient().when(genaiProperties.localization()).thenReturn(localizationProps);
 
         // RestClient 체이닝 명시적 조립 및 모킹
         lenient().when(localizationRestClient.post()).thenReturn(requestBodyUriSpec);
@@ -120,7 +122,7 @@ public class LocalizationServiceTest {
 
         // [Given] 한글화 엔진의 정상 번역 결과 응답 모킹
         LocalizationBulkResponse mockResponse = new LocalizationBulkResponse(true,
-                List.of(new LocalizationBulkResponse.ResultItem(1L, "설명_한글", "스토리_한글")));
+                List.of(new LocalizationBulkResponse.ResultItem(1L, "설명_한글", "스토리_한글", null)));
         when(responseSpec.body(LocalizationBulkResponse.class)).thenReturn(mockResponse);
 
         // [When] 청크 단위 한글화 처리 로직 실행

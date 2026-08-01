@@ -84,9 +84,11 @@ public class KeywordLocalizationServiceTest {
 
         // GenaiProperties 초기화 및 주입
         lenient().when(genaiProperties.fastapiUrl()).thenReturn("http://localhost:8000");
-        GenaiProperties.Localization.ChunkSize chunkSize = new GenaiProperties.Localization.ChunkSize(10, 100);
-        GenaiProperties.Localization localization = new GenaiProperties.Localization(chunkSize, 1000);
-        lenient().when(genaiProperties.localization()).thenReturn(localization);
+        GenaiProperties.Localization.Game gameProps = new GenaiProperties.Localization.Game(10);
+        GenaiProperties.Localization.Keyword keywordProps = new GenaiProperties.Localization.Keyword(100, 1000);
+        GenaiProperties.Localization localizationProps = new GenaiProperties.Localization(10000, gameProps, keywordProps);
+
+        lenient().when(genaiProperties.localization()).thenReturn(localizationProps);
 
         // RestClient 체이닝 명시적 조립 및 모킹
         lenient().when(localizationRestClient.post()).thenReturn(requestBodyUriSpec);
@@ -194,7 +196,7 @@ public class KeywordLocalizationServiceTest {
 
         // [Given] AI 엔진의 재시도 정상 번역 결과 응답 모킹
         KeywordLocalizationBulkResponse mockResponse = new KeywordLocalizationBulkResponse(
-                List.of(new KeywordLocalizationBulkResponse.KeywordLocalizationResponse("Action", "액션")));
+                List.of(new KeywordLocalizationBulkResponse.KeywordLocalizationResponse("Action", "액션", null)));
         when(responseSpec.body(KeywordLocalizationBulkResponse.class)).thenReturn(mockResponse);
 
         when(failedTaskRepository.findAllById(anyList())).thenReturn(List.of(mockTask));

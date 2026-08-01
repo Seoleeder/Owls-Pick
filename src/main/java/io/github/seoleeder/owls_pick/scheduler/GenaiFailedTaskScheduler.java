@@ -1,6 +1,7 @@
 package io.github.seoleeder.owls_pick.scheduler;
 
 import io.github.seoleeder.owls_pick.global.config.properties.GenaiProperties;
+import io.github.seoleeder.owls_pick.service.genai.EmbeddingService;
 import io.github.seoleeder.owls_pick.service.genai.GenaiTaskCleanupService;
 import io.github.seoleeder.owls_pick.service.genai.ReviewSummaryService;
 import io.github.seoleeder.owls_pick.service.genai.localization.KeywordLocalizationService;
@@ -21,6 +22,7 @@ public class GenaiFailedTaskScheduler {
     private final ReviewSummaryService reviewSummaryService;
     private final LocalizationService localizationService;
     private final KeywordLocalizationService keywordLocalizationService;
+    private final EmbeddingService embeddingService;
     private final GenaiTaskCleanupService cleanupService;
     private final GenaiProperties props;
 
@@ -34,6 +36,7 @@ public class GenaiFailedTaskScheduler {
         reviewSummaryService.retryFailedTasks();
         localizationService.retryFailedTasks();
         keywordLocalizationService.retryFailedTasks();
+        embeddingService.retryFailedTasks();
     }
 
     /**

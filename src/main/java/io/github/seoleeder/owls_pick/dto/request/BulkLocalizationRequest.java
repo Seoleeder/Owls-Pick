@@ -21,7 +21,6 @@ public record BulkLocalizationRequest(
 
             @Schema(description = "게임 ID", example = "190264")
             @NotNull(message = "Game ID is required.")
-            @JsonProperty("game_id")
             Long gameId,
 
             @Schema(description = "원본 설명 (영문)", example = "A grand epic set in the wild west.")
