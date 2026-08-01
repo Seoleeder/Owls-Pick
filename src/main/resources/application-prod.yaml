@@ -92,16 +92,16 @@ internal-api:
       game:
         chunk-size: 30
       keyword:
-        chunk-size: 200
+        chunk-size: 500
         db-batch-size: 1000
     review:
       min-threshold: 50
-      batch-size: 10
-      delay-ms: 10000
+      batch-size: 4
+      delay-ms: 12000
     embedding:
       db-fetch-size: 1000
-      api-batch-size: 100
-      delay-ms: 8000
+      api-batch-size: 150
+      delay-ms: 5000
     chat:
       history-limit: 10
       traffic:
