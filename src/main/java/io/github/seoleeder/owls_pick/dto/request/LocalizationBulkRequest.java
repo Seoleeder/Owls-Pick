@@ -13,7 +13,7 @@ public record LocalizationBulkRequest(
         @Schema(description = "비동기 콜백 식별용 ID", example = "550e8400-e29b-41d4-a716-446655440000")
         String requestId,
 
-        @Schema(description = "완료 후 결과를 전송할 웹훅 URL", example = "http://owls-pick-api:8081/api/internal/webhook/localization")
+        @Schema(description = "완료 후 결과를 전송할 웹훅 URL", example = "http://owls-pick-api:8080/api/internal/webhook/localization")
         String callbackUrl,
 
         @Schema(description = "한글화 요청할 게임 목록")

@@ -70,7 +70,10 @@ public class SecurityConfig {
                                 // swagger 관련
                                 "/swagger-ui.html",
                                 "/swagger-ui/**",
-                                "/v3/api-docs/**"
+                                "/v3/api-docs/**",
+
+                                // 내부 접근
+                                "/api/internal/**"
                         ).permitAll()
 
                         // Actuator 엔드포인트 전용 접근 허용
