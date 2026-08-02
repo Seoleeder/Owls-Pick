@@ -12,7 +12,7 @@ public record ReviewSummaryRequest(
         @Schema(description = "비동기 콜백 매핑용 요청 식별자", example = "550e8400-e29b-41d4-a716-446655440000")
         String requestId,
 
-        @Schema(description = "작업 완료 후 결과를 수신할 웹훅 URL", example = "http://owls-pick-api:8081/api/internal/callback/genai/reviews")
+        @Schema(description = "작업 완료 후 결과를 수신할 웹훅 URL", example = "http://owls-pick-api:8080/api/internal/callback/genai/reviews")
         String callbackUrl,
 
         @Schema(description = "게임 ID", example = "152")
