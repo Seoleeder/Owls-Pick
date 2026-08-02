@@ -13,6 +13,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -39,20 +40,51 @@ public class GenaiCallbackController {
             summary = "한글화 파이프라인 콜백 수신",
             description = "FastAPI에서 처리 완료된 한글화 데이터를 수신하여 대기 중인 파이프라인 스레드로 전달"
     )
-    @ApiResponse(
-            responseCode = "200",
-            description = "웹훅 수신 성공",
-            content = @Content(
-                    mediaType = "application/json",
-                    examples = @ExampleObject(value = """
-                            {
-                              "success": true,
-                              "data": null,
-                              "error": null
-                            }
-                            """)
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "콜백 수신 성공",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(value = """
+                                    {
+                                      "success": true,
+                                      "data": null,
+                                      "error": null
+                                    }
+                                    """)
+                    )),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "잘못된 요청 데이터 (필드 누락 또는 형식 불일치)",
+                    content = @Content(mediaType = "application/json",
+                            examples = @ExampleObject(value = """
+                                    {
+                                      "success": false,
+                                      "data": null,
+                                      "error": {
+                                        "code": 40000,
+                                        "message": "잘못된 요청입니다."
+                                      }
+                                    }
+                                    """)
+                    )),
+            @ApiResponse(
+                    responseCode = "500",
+                    description = "서버 내부 오류",
+                    content = @Content(mediaType = "application/json",
+                            examples = @ExampleObject(value = """
+                                    {
+                                      "success": false,
+                                      "data": null,
+                                      "error": {
+                                        "code": 50000,
+                                        "message": "서버 내부 오류입니다."
+                                      }
+                                    }
+                                    """))
             )
-    )
+    })
     @PostMapping("/localization")
     public CommonResponse<Void> handleLocalizationCallback(
             @Valid @RequestBody LocalizationBulkResponse response) {
@@ -68,6 +100,51 @@ public class GenaiCallbackController {
             summary = "키워드 한글화 완료 콜백 수신",
             description = "FastAPI에서 처리 완료된 키워드 데이터를 수신하여 대기 중인 파이프라인 스레드로 전달"
     )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "콜백 수신 성공",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(value = """
+                                    {
+                                      "success": true,
+                                      "data": null,
+                                      "error": null
+                                    }
+                                    """)
+                    )),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "잘못된 요청 데이터 (필드 누락 또는 형식 불일치)",
+                    content = @Content(mediaType = "application/json",
+                            examples = @ExampleObject(value = """
+                                    {
+                                      "success": false,
+                                      "data": null,
+                                      "error": {
+                                        "code": 40000,
+                                        "message": "잘못된 요청입니다."
+                                      }
+                                    }
+                                    """)
+                    )),
+            @ApiResponse(
+                    responseCode = "500",
+                    description = "서버 내부 오류",
+                    content = @Content(mediaType = "application/json",
+                            examples = @ExampleObject(value = """
+                                    {
+                                      "success": false,
+                                      "data": null,
+                                      "error": {
+                                        "code": 50000,
+                                        "message": "서버 내부 오류입니다."
+                                      }
+                                    }
+                                    """))
+            )
+    })
     @PostMapping("/keywords")
     public CommonResponse<Void> handleKeywordLocalizationCallback(
             @Valid @RequestBody KeywordLocalizationBulkResponse response) {
@@ -81,6 +158,51 @@ public class GenaiCallbackController {
             summary = "리뷰 요약 완료 콜백 수신",
             description = "FastAPI에서 처리 완료된 리뷰 요약 데이터를 수신하여 대기 중인 파이프라인 스레드로 전달"
     )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "콜백 수신 성공",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(value = """
+                                    {
+                                      "success": true,
+                                      "data": null,
+                                      "error": null
+                                    }
+                                    """)
+                    )),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "잘못된 요청 데이터 (필드 누락 또는 형식 불일치)",
+                    content = @Content(mediaType = "application/json",
+                            examples = @ExampleObject(value = """
+                                    {
+                                      "success": false,
+                                      "data": null,
+                                      "error": {
+                                        "code": 40000,
+                                        "message": "잘못된 요청입니다."
+                                      }
+                                    }
+                                    """)
+                    )),
+            @ApiResponse(
+                    responseCode = "500",
+                    description = "서버 내부 오류",
+                    content = @Content(mediaType = "application/json",
+                            examples = @ExampleObject(value = """
+                                    {
+                                      "success": false,
+                                      "data": null,
+                                      "error": {
+                                        "code": 50000,
+                                        "message": "서버 내부 오류입니다."
+                                      }
+                                    }
+                                    """))
+            )
+    })
     @PostMapping("/reviews")
     public CommonResponse<Void> handleReviewSummaryCallback(
             @Valid @RequestBody ReviewSummaryResponse response) {
@@ -94,6 +216,51 @@ public class GenaiCallbackController {
             summary = "벡터 임베딩 완료 콜백 수신",
             description = "FastAPI에서 처리 완료된 벡터 임베딩 데이터를 수신하여 대기 중인 파이프라인 스레드로 전달"
     )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "콜백 수신 성공",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(value = """
+                                    {
+                                      "success": true,
+                                      "data": null,
+                                      "error": null
+                                    }
+                                    """)
+                    )),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "잘못된 요청 데이터 (필드 누락 또는 형식 불일치)",
+                    content = @Content(mediaType = "application/json",
+                            examples = @ExampleObject(value = """
+                                    {
+                                      "success": false,
+                                      "data": null,
+                                      "error": {
+                                        "code": 40000,
+                                        "message": "잘못된 요청입니다."
+                                      }
+                                    }
+                                    """)
+                    )),
+            @ApiResponse(
+                    responseCode = "500",
+                    description = "서버 내부 오류",
+                    content = @Content(mediaType = "application/json",
+                            examples = @ExampleObject(value = """
+                                    {
+                                      "success": false,
+                                      "data": null,
+                                      "error": {
+                                        "code": 50000,
+                                        "message": "서버 내부 오류입니다."
+                                      }
+                                    }
+                                    """))
+            )
+    })
     @PostMapping("/embeddings")
     public CommonResponse<Void> handleEmbeddingCallback(
             @Valid @RequestBody EmbeddingBatchResponse response) {
