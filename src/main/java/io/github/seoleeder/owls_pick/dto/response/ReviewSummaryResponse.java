@@ -6,6 +6,10 @@ import java.util.List;
 
 @Schema(description = "GenAI 리뷰 요약 응답 DTO (FastAPI 통신용)")
 public record ReviewSummaryResponse(
+
+        @Schema(description = "비동기 콜백 매핑용 요청 식별자", example = "550e8400-e29b-41d4-a716-446655440000")
+        String requestId,
+
         @Schema(description = " 스팀 리뷰 요약 텍스트", example = "대체로 타격감이 훌륭하고 스토리 몰입도가 높다는 평입니다.")
         String summaryText,
 

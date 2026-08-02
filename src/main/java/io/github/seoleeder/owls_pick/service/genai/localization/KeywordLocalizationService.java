@@ -24,6 +24,10 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 import java.net.URI;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
 @Service
@@ -52,6 +56,9 @@ public class KeywordLocalizationService {
         this.transactionTemplate = transactionTemplate;
         this.failedTaskRepository = failedTaskRepository;
     }
+
+    // 비동기 콜백 상태 관리를 위한 인메모리 맵
+    private final Map<String, CompletableFuture<KeywordLocalizationBulkResponse>> pendingRequests = new ConcurrentHashMap<>();
 
     /**
      * 환경 변수에 설정된 기본 청크 사이즈를 사용하여 파이프라인 전체 실행
@@ -282,6 +289,19 @@ public class KeywordLocalizationService {
         }
     }
 
+    /**
+     * Webhook 수신 시 대기 중인 요청 식별자를 찾아 결과 반환 및 스레드 대기 해제
+     */
+    public void completePendingTask(KeywordLocalizationBulkResponse response) {
+        CompletableFuture<KeywordLocalizationBulkResponse> future = pendingRequests.get(response.requestId());
+        if (future != null) {
+            future.complete(response);
+            log.info("[GenAI] Successfully received callback for Request ID: {}", response.requestId());
+        } else {
+            log.warn("[GenAI] Received callback for unknown or expired Request ID: {}", response.requestId());
+        }
+    }
+
     // ---------------------------------------------------------------------------------
     // Helper Methods
     // ---------------------------------------------------------------------------------
@@ -293,13 +313,23 @@ public class KeywordLocalizationService {
         List<String> keywords = entities.stream()
                 .map(KeywordDictionary::getEngName)
                 .toList();
-        return new KeywordLocalizationRequest(keywords);
+        return new KeywordLocalizationRequest(null, null, keywords);
     }
 
     /**
      * 한글화 엔진으로 HTTP 요청 전송 및 결과 반환
      */
     private KeywordLocalizationBulkResponse sendToAiEngine(KeywordLocalizationRequest request) {
+
+        // 요청 및 콜백 매핑용 고유 식별자 발급
+        String requestId = UUID.randomUUID().toString();
+
+        // Webhook URL 생성
+        String callbackUrl = props.callbackBaseUrl() + "/api/internal/callback/genai/keywords";
+
+        KeywordLocalizationRequest asyncRequest = new KeywordLocalizationRequest(
+                requestId, callbackUrl, request.keywords());
+
         log.info("[GenAI] Sending bulk keyword localization request for {} keywords to AI Engine...", request.keywords().size());
 
         URI targetUri = UriComponentsBuilder.fromUriString(props.fastapiUrl())
@@ -307,33 +337,43 @@ public class KeywordLocalizationService {
                 .build()
                 .toUri();
 
-        KeywordLocalizationBulkResponse response;
-
         try {
-            response = localizationRestClient.post()
+            // 키워드 데이터 전송 직후 커넥션 해제
+            localizationRestClient.post()
                     .uri(targetUri)
                     .contentType(MediaType.APPLICATION_JSON)
-                    .body(request)
+                    .body(asyncRequest)
                     .retrieve()
-                    .body(KeywordLocalizationBulkResponse.class);
+                    .toBodilessEntity();
         } catch (RestClientException e) {
-            log.error("[GenAI] Communication Error with GenAI Server for Keyword Localization");
+            log.error("[GenAI] Initial Communication Error with GenAI Server for Game Localization");
             throw new CustomException(ErrorCode.FASTAPI_COMMUNICATION_FAILED);
         }
 
-        if (response == null || response.localizationResults() == null) {
-            log.error("[GenAI] AI Engine returned invalid response or keyword task failed.");
-            throw new CustomException(ErrorCode.FASTAPI_COMMUNICATION_FAILED);
-        }
+        // 인메모리 스레드 대기 상태 전환
+        CompletableFuture<KeywordLocalizationBulkResponse> future = new CompletableFuture<>();
+        pendingRequests.put(requestId, future);
 
-        return response;
+        try {
+            // Webhook 응답 수신 대기
+            return future.get(5, TimeUnit.MINUTES);
+        } catch (TimeoutException e) {
+            log.error("[GenAI] Webhook callback timeout for Request ID: {}", requestId);
+            throw new CustomException(ErrorCode.FASTAPI_COMMUNICATION_FAILED);
+        } catch (Exception e) {
+            log.error("[GenAI] Failed to wait for webhook callback for Request ID: {}", requestId, e);
+            throw new CustomException(ErrorCode.FASTAPI_COMMUNICATION_FAILED);
+        } finally {
+            // 대기 인메모리 객체 제거
+            pendingRequests.remove(requestId);
+        }
     }
 
     /**
      * 키워드 한글화 엔진 응답을 원본 사전 엔티티에 매핑
      */
     private void applyLocalizationResults(List<KeywordDictionary> chunkEntities, KeywordLocalizationBulkResponse response) {
-        if (response == null || response.localizationResults() == null || response.localizationResults().isEmpty()) {
+        if (response == null || !response.success() || response.localizationResults() == null || response.localizationResults().isEmpty()) {
             return;
         }
 

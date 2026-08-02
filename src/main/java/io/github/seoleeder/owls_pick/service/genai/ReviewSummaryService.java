@@ -24,7 +24,12 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 import java.net.URI;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 
 /**
@@ -59,6 +64,9 @@ public class ReviewSummaryService {
         this.transactionTemplate = transactionTemplate;
         this.failedTaskRepository = failedTaskRepository;
     }
+
+    // 비동기 콜백 상태 관리를 위한 인메모리 맵
+    private final Map<String, CompletableFuture<ReviewSummaryResponse>> pendingRequests = new ConcurrentHashMap<>();
 
     /**
      * 환경 변수에 설정된 기본 배치 사이즈로 파이프라인 실행
@@ -221,6 +229,19 @@ public class ReviewSummaryService {
         }
     }
 
+    /**
+     * Webhook 수신 시 대기 중인 요청 식별자를 찾아 결과 반환 및 스레드 대기 해제
+     */
+    public void completePendingTask(ReviewSummaryResponse response) {
+        CompletableFuture<ReviewSummaryResponse> future = pendingRequests.get(response.requestId());
+        if (future != null) {
+            future.complete(response);
+            log.info("[GenAI] Successfully received callback for Request ID: {}", response.requestId());
+        } else {
+            log.warn("[GenAI] Received callback for unknown or expired Request ID: {}", response.requestId());
+        }
+    }
+
     // ---------------------------------------------------------------------------------
     // Helper Methods
     // ---------------------------------------------------------------------------------
@@ -241,27 +262,55 @@ public class ReviewSummaryService {
      * 리뷰 요약 엔진으로 리뷰 데이터 전송 및 리뷰 요약 결과 반환
      */
     private ReviewSummaryResponse requestSummaryToFastApi(Long gameId, ReviewStat stat, List<String> reviewTexts) {
-        ReviewSummaryRequest requestDto = new ReviewSummaryRequest(
+        // 콜백 식별자 및 Webhook URL 생성
+        String requestId = UUID.randomUUID().toString();
+        String callbackUrl = props.callbackBaseUrl() + "/api/internal/callback/genai/reviews";
+
+        ReviewSummaryRequest asyncRequest = new ReviewSummaryRequest(
+                requestId,
+                callbackUrl,
                 gameId,
                 stat.getReviewScore(),
                 reviewTexts
         );
+
+        log.info("[GenAI] Sending async review summary request (Request ID: {}) for Game ID: {} to AI Engine...", requestId, gameId);
+
         URI targetUri = UriComponentsBuilder.fromUriString(props.fastapiUrl())
                 .path("/api/genai/summarize/reviews")
                 .build()
                 .toUri();
 
         try {
-            return restClient.post()
+            // 리뷰 데이터 전송 직후 연결 해제
+            restClient.post()
                     .uri(targetUri)
                     .contentType(MediaType.APPLICATION_JSON)
-                    .body(requestDto)
+                    .body(asyncRequest)
                     .retrieve()
-                    .body(ReviewSummaryResponse.class);
+                    .toBodilessEntity();
         } catch (RestClientException e) {
             log.error("[GenAI] Communication Error with GenAI Server for Game ID: {}", gameId);
             throw new CustomException(ErrorCode.FASTAPI_COMMUNICATION_FAILED);
         }
+
+        // 인메모리 스레드 대기 상태 전환
+        CompletableFuture<ReviewSummaryResponse> future = new CompletableFuture<>();
+        pendingRequests.put(requestId, future);
+
+        try {
+            // Webhook 응답 수신 대기 (최대 5분)
+            return future.get(5, TimeUnit.MINUTES);
+        } catch (TimeoutException e) {
+            log.error("[GenAI] Webhook callback timeout for Request ID: {}", requestId);
+            throw new CustomException(ErrorCode.FASTAPI_COMMUNICATION_FAILED);
+        } catch (Exception e) {
+            log.error("[GenAI] Failed to wait for webhook callback for Request ID: {}", requestId, e);
+            throw new CustomException(ErrorCode.FASTAPI_COMMUNICATION_FAILED);
+        } finally {
+            pendingRequests.remove(requestId);
+        }
+
     }
 
     /**

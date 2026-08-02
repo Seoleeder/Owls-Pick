@@ -10,6 +10,9 @@ import java.util.List;
 
 @Schema(description = "벡터 임베딩 배치 응답 DTO")
 public record EmbeddingBatchResponse(
+        @Schema(description = "비동기 콜백 매핑용 요청 식별자", example = "550e8400-e29b-41d4-a716-446655440000")
+        String requestId,
+
         @Valid
         @NotEmpty(message = "Embedded results must not be empty")
         @Schema(description = "처리가 완료된 임베딩 게임 목록")
