@@ -57,6 +57,7 @@ external-api:
 internal-api:
   genai:
     fastapi-url: "${FASTAPI_URL:http://localhost:8000}"
+    callback-base-url: "${INTERNAL_API_BASE_URL:http://localhost:8080}"
     failed-task:
       retention-days: 14
     localization:

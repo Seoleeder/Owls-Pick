@@ -85,6 +85,7 @@ external-api:
 internal-api:
   genai:
     fastapi-url: "${config.fastapi-url:http://owls-pick-fastapi:8000}"
+    callback-base-url: "${config.api-base-url:http://owls-pick-api:8081}"
     failed-task:
       retention-days: 14
     localization:

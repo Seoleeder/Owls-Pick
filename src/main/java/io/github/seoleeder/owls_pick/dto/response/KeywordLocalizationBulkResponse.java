@@ -9,6 +9,13 @@ import java.util.List;
  */
 @Schema(description = "GenAI 키워드 한글화 대량 응답 DTO")
 public record KeywordLocalizationBulkResponse(
+
+        @Schema(description = "비동기 콜백 매핑용 요청 식별자", example = "550e8400-e29b-41d4-a716-446655440000")
+        String requestId,
+
+        @Schema(description = "대량 한글화 요청 성공 여부", example = "true")
+        boolean success,
+
         @Schema(description = "키워드 한글화 결과 목록")
         List<KeywordLocalizationResponse> localizationResults
 ) {

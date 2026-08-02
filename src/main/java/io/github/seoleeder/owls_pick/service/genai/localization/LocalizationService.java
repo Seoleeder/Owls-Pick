@@ -1,6 +1,6 @@
 package io.github.seoleeder.owls_pick.service.genai.localization;
 
-import io.github.seoleeder.owls_pick.dto.request.BulkLocalizationRequest;
+import io.github.seoleeder.owls_pick.dto.request.LocalizationBulkRequest;
 import io.github.seoleeder.owls_pick.dto.response.LocalizationBulkResponse;
 import io.github.seoleeder.owls_pick.entity.game.Game;
 import io.github.seoleeder.owls_pick.entity.genai.GenaiFailedTask;
@@ -24,6 +24,11 @@ import java.net.URI;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
 @Service
@@ -49,6 +54,9 @@ public class LocalizationService {
         this.transactionTemplate = transactionTemplate;
         this.failedTaskRepository = failedTaskRepository;
     }
+
+    // 비동기 콜백 상태 관리를 위한 인메모리 맵
+    private final Map<String, CompletableFuture<LocalizationBulkResponse>> pendingRequests = new ConcurrentHashMap<>();
 
     /**
      * 환경 변수에 설정된 기본 청크 사이즈로 한글화 파이프라인 실행
@@ -103,7 +111,7 @@ public class LocalizationService {
 
         try {
             // 요청 DTO 조립
-            BulkLocalizationRequest request = buildRequestDto(targetGames);
+            LocalizationBulkRequest request = buildRequestDto(targetGames);
 
             // 한글화 엔진 통신
             LocalizationBulkResponse response = sendToAiEngine(request);
@@ -157,7 +165,7 @@ public class LocalizationService {
                 List<Game> targetGames = gameRepository.findAllById(gameIds);
 
                 // 통신 DTO 생성 및 한글화 재요청
-                BulkLocalizationRequest request = buildRequestDto(targetGames);
+                LocalizationBulkRequest request = buildRequestDto(targetGames);
                 LocalizationBulkResponse response = sendToAiEngine(request);
 
                 // 재시도 결과 적용 및 실패 작업 조치 완료 처리
@@ -178,6 +186,19 @@ public class LocalizationService {
         }
     }
 
+    /**
+     * Webhook 수신 시 대기 중인 요청 식별자를 찾아 결과 반환 및 스레드 대기 해제
+     */
+    public void completePendingTask(LocalizationBulkResponse response) {
+        CompletableFuture<LocalizationBulkResponse> future = pendingRequests.get(response.requestId());
+        if (future != null) {
+            future.complete(response);
+            log.info("[GenAI] Successfully received callback for Request ID: {}", response.requestId());
+        } else {
+            log.warn("[GenAI] Received callback for unknown or expired Request ID: {}", response.requestId());
+        }
+    }
+
     // ---------------------------------------------------------------------------------
     // Helper Methods
     // ---------------------------------------------------------------------------------
@@ -185,21 +206,31 @@ public class LocalizationService {
     /**
      * Game 엔티티 리스트를 외부 한글화 엔진 통신용 Request DTO로 변환
      */
-    private BulkLocalizationRequest buildRequestDto(List<Game> games) {
-        List<BulkLocalizationRequest.GameItem> items = games.stream()
-                .map(game -> new BulkLocalizationRequest.GameItem(
+    private LocalizationBulkRequest buildRequestDto(List<Game> games) {
+        List<LocalizationBulkRequest.GameItem> items = games.stream()
+                .map(game -> new LocalizationBulkRequest.GameItem(
                         game.getId(),
                         game.getDescription(),
                         game.getStoryline()
                 )).toList();
 
-        return new BulkLocalizationRequest(items);
+        return new LocalizationBulkRequest(null, null, items);
     }
 
     /**
      * 한글화 엔진으로 실제 HTTP 요청을 보내고 한글화 결과 반환
      */
-    private LocalizationBulkResponse sendToAiEngine(BulkLocalizationRequest request) {
+    private LocalizationBulkResponse sendToAiEngine(LocalizationBulkRequest request) {
+
+        // 요청 및 콜백 매핑용 고유 식별자 발급
+        String requestId = UUID.randomUUID().toString();
+
+        // Base URL과 엔드포인트를 조합하여 콜백 URL 생성
+        String callbackUrl = props.callbackBaseUrl() + "/api/internal/callback/genai/localization";
+
+        LocalizationBulkRequest asyncRequest = new LocalizationBulkRequest(
+                requestId, callbackUrl, request.games());
+
         log.info("[GenAI] Sending bulk localization request for {} games to AI Engine...", request.games().size());
 
         URI targetUri = UriComponentsBuilder.fromUriString(props.fastapiUrl())
@@ -207,26 +238,37 @@ public class LocalizationService {
                 .build()
                 .toUri();
 
-        LocalizationBulkResponse response;
-
         try {
-            response = localizationRestClient.post()
+            // 한글화 요청 전송 직후 커넥션 해제
+            localizationRestClient.post()
                     .uri(targetUri)
                     .contentType(MediaType.APPLICATION_JSON)
-                    .body(request)
+                    .body(asyncRequest)
                     .retrieve()
-                    .body(LocalizationBulkResponse.class);
+                    .toBodilessEntity();
         } catch (RestClientException e) {
             log.error("[GenAI] Communication Error with GenAI Server for Game Localization");
             throw new CustomException(ErrorCode.FASTAPI_COMMUNICATION_FAILED);
         }
 
-        if (response == null || !response.success() || response.results() == null) {
-            log.error("AI Engine returned invalid response or task failed.");
-            throw new CustomException(ErrorCode.FASTAPI_COMMUNICATION_FAILED);
-        }
-        return response;
+        // 인메모리 스레드 대기 상태 전환
+        CompletableFuture<LocalizationBulkResponse> future = new CompletableFuture<>();
+        pendingRequests.put(requestId, future);
 
+        try {
+
+            // Webhook 응답 수신까지 스레드 대기
+            return future.get(5, TimeUnit.MINUTES);
+        } catch (TimeoutException e) {
+            log.error("[GenAI] Webhook callback timeout for Request ID: {}", requestId);
+            throw new CustomException(ErrorCode.FASTAPI_COMMUNICATION_FAILED);
+        } catch (Exception e) {
+            log.error("[GenAI] Failed to wait for webhook callback for Request ID: {}", requestId, e);
+            throw new CustomException(ErrorCode.FASTAPI_COMMUNICATION_FAILED);
+        } finally {
+            // 처리 완료된 요청 식별자 제거 (메모리 누수 방지)
+            pendingRequests.remove(requestId);
+        }
     }
 
     /**
@@ -280,7 +322,7 @@ public class LocalizationService {
         try {
             return GenaiFailReason.valueOf(reasonStr);
         } catch (IllegalArgumentException e) {
-            log.warn("[GenAI] Unknown GenaiFailReason received: {}. Falling back to UNKNOWN_ERROR.", reasonStr);
+            log.warn("[GenAI] Unknown FailReason received: {}. Falling back to UNKNOWN_ERROR.", reasonStr);
             return GenaiFailReason.UNKNOWN_ERROR;
         }
     }
