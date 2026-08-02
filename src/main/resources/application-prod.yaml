@@ -85,20 +85,20 @@ external-api:
 internal-api:
   genai:
     fastapi-url: "${config.fastapi-url:http://owls-pick-fastapi:8000}"
-    callback-base-url: "${config.api-base-url:http://owls-pick-api:8081}"
+    callback-base-url: "${config.api-base-url:http://owls-pick-api:8080}"
     failed-task:
       retention-days: 14
     localization:
-      delay-ms: 10000
+      delay-ms: 5000
       game:
-        chunk-size: 15
+        chunk-size: 20
       keyword:
         chunk-size: 500
         db-batch-size: 1000
     review:
       min-threshold: 50
-      batch-size: 4
-      delay-ms: 12000
+      batch-size: 5
+      delay-ms: 5000
     embedding:
       db-fetch-size: 1000
       api-batch-size: 150
