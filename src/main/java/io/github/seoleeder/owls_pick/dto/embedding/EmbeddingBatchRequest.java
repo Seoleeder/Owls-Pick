@@ -9,6 +9,12 @@ import java.util.List;
 
 @Schema(description = "벡터 임베딩 배치 요청 DTO")
 public record EmbeddingBatchRequest(
+        @Schema(description = "비동기 콜백 매핑용 요청 식별자", example = "550e8400-e29b-41d4-a716-446655440000")
+        String requestId,
+
+        @Schema(description = "작업 완료 후 결과를 수신할 Webhook URL", example = "http://owls-pick-api:8080/api/internal/callback/genai/embeddings")
+        String callbackUrl,
+
         @Valid
         @NotEmpty(message = "Game list for embedding must not be empty")
         @Schema(description = "임베딩을 요청할 게임 데이터 목록")

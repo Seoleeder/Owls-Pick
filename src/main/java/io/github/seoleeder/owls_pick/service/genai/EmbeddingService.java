@@ -29,7 +29,11 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
 /**
@@ -63,6 +67,9 @@ public class EmbeddingService {
         this.props = props;
         this.failedTaskRepository = failedTaskRepository;
     }
+
+    // 비동기 콜백 상태 관리를 위한 인메모리 맵
+    private final Map<String, CompletableFuture<EmbeddingBatchResponse>> pendingRequests = new ConcurrentHashMap<>();
 
     /**
      * 환경 변수에 설정된 DB 조회 크기(dbFetchSize)를 기준으로 임베딩 파이프라인 시작
@@ -171,25 +178,64 @@ public class EmbeddingService {
     }
 
     /**
+     * Webhook 수신 시 대기 중인 요청 식별자를 찾아 결과 반환 및 스레드 대기 해제
+     */
+    public void completePendingTask(EmbeddingBatchResponse response) {
+        CompletableFuture<EmbeddingBatchResponse> future = pendingRequests.get(response.requestId());
+        if (future != null) {
+            future.complete(response);
+            log.info("[GenAI-Embedding] Successfully received callback for Request ID: {}", response.requestId());
+        } else {
+            log.warn("[GenAI-Embedding] Received callback for unknown or expired Request ID: {}", response.requestId());
+        }
+    }
+
+    /**
      * FastAPI 서버에 벡터 임베딩 생성 요청 및 응답 반환
      */
     private EmbeddingBatchResponse requestEmbeddingToFastApi(List<EmbeddingBatchRequest.GameEmbeddingData> batchData) {
-        EmbeddingBatchRequest requestDto = new EmbeddingBatchRequest(batchData);
+        // 콜백 매핑을 위한 고유 식별자 발급
+        String requestId = UUID.randomUUID().toString();
+        // Webhook 라우팅 URL 조합
+        String callbackUrl = props.callbackBaseUrl() + "/api/internal/callback/genai/embeddings";
+
+        EmbeddingBatchRequest asyncRequest = new EmbeddingBatchRequest(requestId, callbackUrl, batchData);
+
+        log.info("[GenAI-Embedding] Sending async embedding request (Request ID: {}) for {} games to AI Engine...", requestId, batchData.size());
+
         URI targetUri = UriComponentsBuilder.fromUriString(props.fastapiUrl())
                 .path("/api/genai/embeddings/batch")
                 .build()
                 .toUri();
 
         try {
-            return restClient.post()
+            restClient.post()
                     .uri(targetUri)
                     .contentType(MediaType.APPLICATION_JSON)
-                    .body(requestDto)
+                    .body(asyncRequest)
                     .retrieve()
-                    .body(EmbeddingBatchResponse.class);
+                    .toBodilessEntity();
         } catch (RestClientException e) {
-            log.error("[GenAI] Communication Error with GenAI Server for Vector Embedding Batch.");
+            log.error("[GenAI-Embedding] Initial Communication Error with GenAI Server for Vector Embedding Batch.");
             throw new CustomException(ErrorCode.FASTAPI_COMMUNICATION_FAILED);
+        }
+
+        // 인메모리 스레드 대기 상태 전환
+        CompletableFuture<EmbeddingBatchResponse> future = new CompletableFuture<>();
+        pendingRequests.put(requestId, future);
+
+        try {
+            // Webhook 응답 수신 대기 (최대 5분)
+            return future.get(5, TimeUnit.MINUTES);
+        } catch (TimeoutException e) {
+            log.error("[GenAI-Embedding] Webhook callback timeout for Request ID: {}", requestId);
+            throw new CustomException(ErrorCode.FASTAPI_COMMUNICATION_FAILED);
+        } catch (Exception e) {
+            log.error("[GenAI-Embedding] Failed to wait for webhook callback for Request ID: {}", requestId, e);
+            throw new CustomException(ErrorCode.FASTAPI_COMMUNICATION_FAILED);
+        } finally {
+            // 처리 완료 후 메모리 누수 방지
+            pendingRequests.remove(requestId);
         }
     }
 

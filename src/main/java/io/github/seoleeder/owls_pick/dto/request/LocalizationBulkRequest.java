@@ -1,6 +1,5 @@
 package io.github.seoleeder.owls_pick.dto.request;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
@@ -8,8 +7,14 @@ import jakarta.validation.constraints.NotNull;
 
 import java.util.List;
 
-@Schema(description = "Gemini 한글화 서버 대량 요청 DTO")
-public record BulkLocalizationRequest(
+@Schema(description = "한글화 엔진 대량 요청 DTO")
+public record LocalizationBulkRequest(
+
+        @Schema(description = "비동기 콜백 식별용 ID", example = "550e8400-e29b-41d4-a716-446655440000")
+        String requestId,
+
+        @Schema(description = "완료 후 결과를 전송할 웹훅 URL", example = "http://owls-pick-api:8081/api/internal/webhook/localization")
+        String callbackUrl,
 
         @Schema(description = "한글화 요청할 게임 목록")
         @NotEmpty(message = "The game list cannot be empty.")

@@ -5,6 +5,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "internal-api.genai")
 public record GenaiProperties(
         String fastapiUrl,
+        String callbackBaseUrl,
         FailedTask failedTask,
         Localization localization,
         Review review,
