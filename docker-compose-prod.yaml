@@ -20,7 +20,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 250M
+          memory: 400M
 
   redis:
     # 컨테이너 최대 메모리 제한
@@ -50,13 +50,15 @@ services:
       - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER}
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
       - GF_SERVER_ROOT_URL=${GRAFANA_ROOT_URL}
+      # Go 런타임 가비지 컬렉터 메모리 상한선 강제 고정
+      - GOMEMLIMIT=150MiB
     volumes:
       - grafana-data:/var/lib/grafana
     # 컨테이너 최대 메모리 제한
     deploy:
       resources:
         limits:
-          memory: 350M
+          memory: 200M
 
   loki:
     ports:
