@@ -48,6 +48,6 @@ ENTRYPOINT ["java", \
             "-Duser.timezone=Asia/Seoul", \
             "-Dnetworkaddress.cache.ttl=5", \
             "-Dsun.net.inetaddr.ttl=5", \
-            "-XX:MaxRAMPercentage=75.0", \
+            "-XX:MaxRAMPercentage=50.0", \
             "-XX:+UseG1GC", \
             "org.springframework.boot.loader.launch.JarLauncher"]
