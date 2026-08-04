@@ -397,8 +397,8 @@ public class KeywordLocalizationService {
                 continue;
             }
 
-            // 번역 누락 또는 FAILED 시 영문 원본 보존 방지 및 DLQ 적재 처리
-            if (result.korName() == null || result.korName().trim().equalsIgnoreCase(entity.getEngName().trim())) {
+            // 번역 데이터 누락(NULL 또는 공백) 시 DLQ 적재 처리
+            if (result.korName() == null || result.korName().isBlank()) {
                 log.warn("[GenAI] Invalid or untranslated korName received for Keyword: {}. Recording to FailedTask.", entity.getEngName());
                 partialFailures.put(entity.getId(), GenaiFailReason.INVALID_RESPONSE);
                 continue;
