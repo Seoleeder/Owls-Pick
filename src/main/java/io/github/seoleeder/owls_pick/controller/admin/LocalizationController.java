@@ -14,6 +14,8 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.core.task.AsyncTaskExecutor;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.concurrent.CompletableFuture;
@@ -21,12 +23,21 @@ import java.util.concurrent.CompletableFuture;
 @Tag(name = "[ADMIN] 한글화 엔진 제어", description = "한글화 파이프라인 수동 제어 API (Required Header 'X-ADMIN-KEY')")
 @RestController
 @RequestMapping("/admin/localization")
-@RequiredArgsConstructor
 @Slf4j
 public class LocalizationController {
 
     private final LocalizationService localizationService;
     private final KeywordLocalizationService keywordLocalizationService;
+    private final AsyncTaskExecutor taskExecutor;
+
+    public LocalizationController(
+            LocalizationService localizationService,
+            KeywordLocalizationService keywordLocalizationService,
+            @Qualifier("applicationTaskExecutor") AsyncTaskExecutor taskExecutor) {
+        this.localizationService = localizationService;
+        this.keywordLocalizationService = keywordLocalizationService;
+        this.taskExecutor = taskExecutor;
+    }
 
     // --- 게임 데이터(설명/스토리라인) 한글화 파이프라인 ---
 
@@ -147,13 +158,14 @@ public class LocalizationController {
     @PostMapping("/run-all")
     public CommonResponse<String> runAllLocalization() {
         log.info("[Admin] Manual trigger requested for ALL game localization.");
+        // 가상 스레드 기반 실행기를 할당하여 비동기 실행
         CompletableFuture.runAsync(() -> {
             try {
                 localizationService.runPipeline();
             } catch (Exception e) {
                 log.error("[Admin] Manual Game Localization Pipeline Failed: {}", e.getMessage());
             }
-        });
+        }, taskExecutor);
         return CommonResponse.ok("Background Game Localization Pipeline Started");
     }
 
@@ -214,13 +226,15 @@ public class LocalizationController {
             @RequestParam int chunkSize
     ) {
         log.info("[Admin] Manual trigger requested for ALL game localization with custom chunk size: {}", chunkSize);
+
+        // 가상 스레드 기반 실행기를 할당하여 비동기 실행
         CompletableFuture.runAsync(() -> {
             try {
                 localizationService.runPipeline(chunkSize);
             } catch (Exception e) {
                 log.error("[Admin] Custom Game Localization Pipeline Failed: {}", e.getMessage());
             }
-        });
+        }, taskExecutor);
         return CommonResponse.ok("Custom Background Game Localization Pipeline Started");
     }
 
@@ -345,6 +359,7 @@ public class LocalizationController {
     public CommonResponse<String> runAllKeywordLocalization() {
         log.info("[Admin] Manual trigger requested for Default Keyword Localization.");
 
+        // 가상 스레드 기반 실행기를 할당하여 비동기 실행
         CompletableFuture.runAsync(() -> {
             try {
                 int totalProcessed = keywordLocalizationService.runPipeline();
@@ -352,7 +367,7 @@ public class LocalizationController {
             } catch (Exception e) {
                 log.error("[Admin] Manual Default Keyword Localization Pipeline Failed: {}", e.getMessage());
             }
-        });
+        }, taskExecutor);
 
         return CommonResponse.ok("Background Keyword Localization Pipeline Started");
     }
@@ -414,6 +429,8 @@ public class LocalizationController {
             @RequestParam int chunkSize
     ) {
         log.info("[Admin] Manual trigger requested for ALL Keyword Localization with custom chunk size: {}", chunkSize);
+
+        // 가상 스레드 기반 실행기를 할당하여 비동기 실행
         CompletableFuture.runAsync(() -> {
             try {
                 // isSingleRun = false
@@ -422,7 +439,7 @@ public class LocalizationController {
             } catch (Exception e) {
                 log.error("[Admin] Custom Keyword Localization Pipeline Failed: {}", e.getMessage());
             }
-        });
+        }, taskExecutor);
         return CommonResponse.ok("Custom Background Keyword Localization Pipeline Started");
     }
 

@@ -11,8 +11,9 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.core.task.AsyncTaskExecutor;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.concurrent.CompletableFuture;
@@ -20,11 +21,18 @@ import java.util.concurrent.CompletableFuture;
 @Tag(name = "[ADMIN] 리뷰 요약 엔진 제어", description = "AI 리뷰 요약 파이프라인 수동 제어 API (Required Header 'X-ADMIN-KEY')")
 @RestController
 @RequestMapping("/admin/review-summary")
-@RequiredArgsConstructor
 @Slf4j
 public class ReviewSummaryController {
 
     private final ReviewSummaryService reviewSummaryService;
+    private final AsyncTaskExecutor taskExecutor;
+
+    public ReviewSummaryController(
+            ReviewSummaryService reviewSummaryService,
+            @Qualifier("applicationTaskExecutor") AsyncTaskExecutor taskExecutor) {
+        this.reviewSummaryService = reviewSummaryService;
+        this.taskExecutor = taskExecutor;
+    }
 
     @Operation(
             summary = "게임 리뷰 요약 파이프라인 수동 트리거",
@@ -81,7 +89,7 @@ public class ReviewSummaryController {
     })
     @PostMapping("/bulk-run")
     public CommonResponse<ReviewSummaryResultDto> runBulkSummary(
-            @RequestParam(defaultValue = "4") int batchSize
+            @RequestParam(defaultValue = "5") int batchSize
     ) {
         log.info("[Admin] Manual trigger requested for bulk review summary. Target batch size: {}", batchSize);
         int processedCount = reviewSummaryService.processSingleBatch(batchSize);
@@ -142,15 +150,19 @@ public class ReviewSummaryController {
     @PostMapping("/run-all")
     public CommonResponse<String> runAllSummary() {
         log.info("[Admin] Manual trigger requested for ALL game review summary.");
+
+        // 가상 스레드 기반 실행기를 할당하여 비동기 실행
         CompletableFuture.runAsync(() -> {
             try {
                 reviewSummaryService.runPipeline();
             } catch (Exception e) {
                 log.error("[Admin] Manual Review Summary Pipeline Failed: {}", e.getMessage());
             }
-        });
+        }, taskExecutor);
+
         return CommonResponse.ok("Background Review Summary Pipeline Started");
     }
+
 
     @Operation(
             summary = "리뷰 전체 요약 백그라운드 트리거 (Custom Batch Size)",
@@ -209,13 +221,14 @@ public class ReviewSummaryController {
     ) {
         log.info("[Admin] Manual trigger requested for ALL game review summary with custom batch size: {}", batchSize);
 
+        // 가상 스레드 기반 실행기를 할당하여 비동기 실행
         CompletableFuture.runAsync(() -> {
             try {
                 reviewSummaryService.runPipeline(batchSize);
             } catch (Exception e) {
                 log.error("[Admin] Custom Review Summary Pipeline Failed: {}", e.getMessage());
             }
-        });
+        }, taskExecutor);
 
         return CommonResponse.ok("Custom Background Review Summary Pipeline Started");
     }

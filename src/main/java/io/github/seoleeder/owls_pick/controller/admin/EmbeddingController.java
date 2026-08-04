@@ -11,8 +11,9 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.core.task.AsyncTaskExecutor;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.concurrent.CompletableFuture;
@@ -20,10 +21,18 @@ import java.util.concurrent.CompletableFuture;
 @Tag(name = "[ADMIN] 벡터 임베딩 엔진 제어", description = "AI 벡터 임베딩 파이프라인 수동 제어 API (Required Header 'X-ADMIN-KEY')")
 @RestController
 @RequestMapping("/admin/embeddings")
-@RequiredArgsConstructor
 @Slf4j
 public class EmbeddingController {
+
     private final EmbeddingService embeddingService;
+    private final AsyncTaskExecutor taskExecutor;
+
+    public EmbeddingController(
+            EmbeddingService embeddingService,
+            @Qualifier("applicationTaskExecutor") AsyncTaskExecutor taskExecutor) {
+        this.embeddingService = embeddingService;
+        this.taskExecutor = taskExecutor;
+    }
 
     @Operation(
             summary = "벡터 임베딩 파이프라인 단일 청크 트리거",
@@ -141,13 +150,15 @@ public class EmbeddingController {
     @PostMapping("/run-all")
     public CommonResponse<String> runAllEmbedding() {
         log.info("[Admin] Manual trigger requested for ALL game vector embeddings (Default Config).");
+        // 가상 스레드 기반 실행기를 할당하여 비동기 실행
         CompletableFuture.runAsync(() -> {
             try {
                 embeddingService.runPipeline();
             } catch (Exception e) {
                 log.error("[Admin] Default Vector Embedding Pipeline Failed: {}", e.getMessage());
             }
-        });
+        }, taskExecutor);
+
         return CommonResponse.ok("Background Vector Embedding Pipeline Started");
     }
 
@@ -208,13 +219,14 @@ public class EmbeddingController {
     ) {
         log.info("[Admin] Manual trigger requested for ALL game vector embeddings with custom fetch size: {}", dbFetchSize);
 
+        // 가상 스레드 기반 실행기를 할당하여 비동기 실행
         CompletableFuture.runAsync(() -> {
             try {
                 embeddingService.runPipeline(dbFetchSize);
             } catch (Exception e) {
                 log.error("[Admin] Custom Vector Embedding Pipeline Failed: {}", e.getMessage());
             }
-        });
+        }, taskExecutor);
 
         return CommonResponse.ok("Custom Background Vector Embedding Pipeline Started");
     }
