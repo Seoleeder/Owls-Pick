@@ -43,8 +43,8 @@ public class RestClientConfig {
 
         JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory(httpClient);
 
-        // 네트워크 지연 및 AI 생성 시간 변동폭을 고려하여 응답 대기 30초 제한
-        factory.setReadTimeout(Duration.ofSeconds(30));
+        // 네트워크 지연 및 AI 생성 시간 변동폭을 고려하여 응답 대기 120초 제한
+        factory.setReadTimeout(Duration.ofSeconds(120));
 
         return builder
                 .requestFactory(factory)
