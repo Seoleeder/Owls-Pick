@@ -18,6 +18,8 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.core.task.AsyncTaskExecutor;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -28,7 +30,6 @@ import java.util.concurrent.CompletableFuture;
 @Tag(name = "[ADMIN] 게임 데이터 초기화", description = "게임 데이터 초기 구축 및 수동 제어 (Required Header 'X-ADMIN-KEY')")
 @RestController
 @RequestMapping("/admin/init")
-@RequiredArgsConstructor
 public class GameDataInitializer {
     private final SteamAppSyncService steamAppService;
     private final SteamDashboardSyncService steamDashboardService;
@@ -36,7 +37,24 @@ public class GameDataInitializer {
     private final IgdbSyncService igdbService;
     private final ItadSyncService itadService;
     private final HltbSyncService hltbSyncService;
+    private final AsyncTaskExecutor taskExecutor;
 
+    public GameDataInitializer(
+            SteamAppSyncService steamAppService,
+            SteamDashboardSyncService steamDashboardService,
+            SteamReviewSyncService steamReviewService,
+            IgdbSyncService igdbService,
+            ItadSyncService itadService,
+            HltbSyncService hltbSyncService,
+            @Qualifier("applicationTaskExecutor") AsyncTaskExecutor taskExecutor) {
+        this.steamAppService = steamAppService;
+        this.steamDashboardService = steamDashboardService;
+        this.steamReviewService = steamReviewService;
+        this.igdbService = igdbService;
+        this.itadService = itadService;
+        this.hltbSyncService = hltbSyncService;
+        this.taskExecutor = taskExecutor;
+    }
 
     @Operation(summary = "Steam 앱 리스트 초기화",
                 description = "Steam에 등록된 앱의 ID, 타이틀 수집",
@@ -71,7 +89,7 @@ public class GameDataInitializer {
 
         log.info("[Admin] Steam App List Sync Requested");
 
-        //TimeOut 방지용 비동기 호출 전략
+        // 가상 스레드 기반 실행기를 할당하여 비동기 실행
         CompletableFuture.runAsync(() -> {
             try {
                 steamAppService.syncAppList();
@@ -79,7 +97,7 @@ public class GameDataInitializer {
             }catch (Exception e){
                 log.error("[Admin] Steam App List Failed", e);
             }
-        });
+        }, taskExecutor);
 
         return CommonResponse.ok("Steam App List Sync Started");
     }
@@ -117,6 +135,7 @@ public class GameDataInitializer {
     public CommonResponse<String> initReviews(){
         log.info("[Admin] Steam App Review Sync Requested");
 
+        // 가상 스레드 기반 실행기를 할당하여 비동기 실행
         CompletableFuture.runAsync(() -> {
             try {
                 steamReviewService.initAllReviews();
@@ -125,7 +144,7 @@ public class GameDataInitializer {
             } catch (Exception e) {
                 log.error("[Admin] Steam App Review Sync Failed", e);
             }
-        });
+        }, taskExecutor);
 
         return CommonResponse.ok("Steam App Review Sync Started");
     }
@@ -163,6 +182,7 @@ public class GameDataInitializer {
     public CommonResponse<String> initDashboard() {
         log.info("[Admin] Steam Chart Dashboard Sync Requested.");
 
+        // 가상 스레드 기반 실행기를 할당하여 비동기 실행
         CompletableFuture.runAsync(() -> {
             try {
                 // 수집 기준 시각 이후의 모든 주간, 월간, 연간 인기 차트 수집
@@ -177,7 +197,7 @@ public class GameDataInitializer {
             } catch (Exception e) {
                 log.error("[Admin] Steam Dashboard Sync Failed", e);
             }
-        });
+        }, taskExecutor);
 
         return CommonResponse.ok("Steam Dashboard Sync Started");
     }
@@ -206,6 +226,7 @@ public class GameDataInitializer {
     public CommonResponse<String> initIgdb() {
         log.info("[Admin] IGDB Sync Requested.");
 
+        // 가상 스레드 기반 실행기를 할당하여 비동기 실행
         CompletableFuture.runAsync(() -> {
             try {
                 igdbService.backfillAllGames();
@@ -213,7 +234,7 @@ public class GameDataInitializer {
             } catch (Exception e) {
                 log.error("[Admin] IGDB Sync Failed", e);
             }
-        });
+        },taskExecutor);
 
         return CommonResponse.ok("IGDB Sync Started");
     }
@@ -251,6 +272,7 @@ public class GameDataInitializer {
     public CommonResponse<String> initItad() {
         log.info("[Admin] ITAD Sync Requested.");
 
+        // 가상 스레드 기반 실행기를 할당하여 비동기 실행
         CompletableFuture.runAsync(() -> {
             try {
                 // ITAD ID 저장
@@ -264,7 +286,7 @@ public class GameDataInitializer {
             } catch (Exception e) {
                 log.error("[Admin] ITAD Sync Failed", e);
             }
-        });
+        },taskExecutor);
 
         return CommonResponse.ok("ITAD Sync Started");
     }
@@ -273,6 +295,7 @@ public class GameDataInitializer {
     @PostMapping("/hltb")
     public CommonResponse<String> initHltb() {
         log.info("[Admin] HLTB Sync Requested.");
+        // 가상 스레드 기반 실행기를 할당하여 비동기 실행
         CompletableFuture.runAsync(() -> {
             try {
                 hltbSyncService.runSyncPipeline();
@@ -280,7 +303,7 @@ public class GameDataInitializer {
             } catch (Exception e) {
                 log.error("[Admin] HLTB Sync Failed", e);
             }
-        });
+        },taskExecutor);
         return CommonResponse.ok("HLTB Sync Started");
     }
 
@@ -317,6 +340,7 @@ public class GameDataInitializer {
     public CommonResponse<String> initAllGameData(){
         log.info("[Admin] All Game Data Initialization Request Received.");
 
+        // 가상 스레드 기반 실행기를 할당하여 비동기 실행
         CompletableFuture.runAsync(() -> {
             long startTime = System.currentTimeMillis();
             try {
@@ -359,7 +383,7 @@ public class GameDataInitializer {
             } catch (Exception e) {
                 log.error("[Admin] Critical Error occurred during sequential initialization pipeline", e);
             }
-        });
+        }, taskExecutor);
 
         return CommonResponse.ok("Game Data Initialization Started in Background");
     }
