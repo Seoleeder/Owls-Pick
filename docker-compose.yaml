@@ -37,6 +37,10 @@ services:
   prometheus:
     image: prom/prometheus:latest
     container_name: owls-pick-prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=3d' # 데이터 보관 주기를 3일로 단축
     networks:
       - owls-pick-network
     restart: unless-stopped
