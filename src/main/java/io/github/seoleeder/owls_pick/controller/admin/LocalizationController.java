@@ -96,7 +96,7 @@ public class LocalizationController {
     })
     @PostMapping("/bulk-run")
     public CommonResponse<LocalizationResultDto> runBulkLocalization(
-            @RequestParam(defaultValue = "15") int chunkSize
+            @RequestParam(defaultValue = "20") int chunkSize
     ) {
         log.info("[Admin] Manual trigger requested for bulk localization. Target chunk size: {}", chunkSize);
         int processedCount = localizationService.processLocalizationChunk(chunkSize);
@@ -294,7 +294,7 @@ public class LocalizationController {
     })
     @PostMapping("/bulk-run-keywords")
     public CommonResponse<LocalizationResultDto> runBulkKeywordLocalization(
-            @RequestParam(defaultValue = "500") int chunkSize
+            @RequestParam(defaultValue = "1000") int chunkSize
     ) {
         log.info("[Admin] Manual trigger requested for Custom Keyword Localization with chunk size: {}", chunkSize);
 
