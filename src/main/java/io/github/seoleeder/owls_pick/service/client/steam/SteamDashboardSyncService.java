@@ -122,12 +122,14 @@ public class SteamDashboardSyncService {
      * 실시간 차트 업데이트 (ConcurrentPlayersTopApp / MostPlayedApp)
      * ConcurrentPlayersTopApp : 15분 주기
      * MostPlayedApp : 1시간 주기
+     * -> Steam API 타임스탬프 고정 반환(2026-05-11) 버그로 인한 무결성 제약조건 충돌 방지를 위해 호출 임시 중단.
+     *
      */
     public void syncRealTimeData() {
         // 동시 접속자수 최다 게임
         syncConcurrentPlayers();
         // 최다 플레이 게임 (24h)
-        syncMostPlayed();
+//        syncMostPlayed();
 
         log.info("Realtime Dashboard Data Synced.");
     }
