@@ -117,13 +117,14 @@ public class GameDataScheduler {
     /**
      * 지난 24시간 최다 플레이 게임 업데이트 (Most Played Games)
      * - 주기 : 1시간 간격
+     * - 상태 : 임시 중단 (Valve Steam API 타임스탬프 고정 버그 대응, 2026-05-11 이후 데이터 갱신 불가)
      * */
-    @Scheduled(cron =  "0 0 * * * *")
+//    @Scheduled(cron =  "0 0 * * * *")
     public void scheduleMostPlayed(){
-        if (isSchedulerDisabled()) return;
-        log.debug("[Scheduler] Most Played (24h) Sync Started");
-        steamDashboardService.syncMostPlayed();
-        log.info("[Scheduler] Most Played Sync Finished!");
+//        if (isSchedulerDisabled()) return;
+//        log.debug("[Scheduler] Most Played (24h) Sync Started");
+//        steamDashboardService.syncMostPlayed();
+//        log.info("[Scheduler] Most Played Sync Finished!");
     }
 
     // 주기별 차트 업데이트 스케줄링 (Weekly / Monthly / Yearly)
