@@ -2,22 +2,27 @@
 
 > 다중 플랫폼(Steam, IGDB, ITAD, HLTB) 데이터 통합 파이프라인과 `pgvector` 기반 RAG 엔진을 적용한 지능형 게임 추천 백엔드 서비스
 
----
+<br/>
+<br/>
 
 ## 1. 프로젝트 개요
 - 서비스 목적 : 다중 플랫폼(Steam, IGDB, ITAD, HLTB)에 파편화된 게임 메타데이터를 통합 정규화하고, LLM 및 벡터 유사도 검색을 통해 개인화된 게임 큐레이션 및 대화형 탐색 지원
-- 개발 인원 및 기간: 1인 백엔드 개발 2026.01 ~ 2026.08
+- 개발 인원 및 기간: 1인 백엔드 개발 / 2026.01 ~ 2026.08
 - 상세 레퍼런스: [서비스 기획 및 요구사항 명세](https://app.notion.com/p/2ae4b8ce5c838089807fff7be0cf7d9c) | [외부 API 분석 및 연동 명세](https://app.notion.com/p/API-2ae4b8ce5c8380309193e17af6721d1c)
 
----
+<br/>
+<br/>
 
 ## 2. 시스템 아키텍처
+
+<br/>
 
 <p align="center">
   <img width="850" alt="Owl&#39;s Pick Backend drawio" src="https://github.com/user-attachments/assets/8201996a-99d1-460c-9997-1c537aedc6d5" />
 </p>
 
----
+<br/>
+<br/>
 
 ## 3. 기술 스택
 
@@ -32,7 +37,8 @@
 | **External API & Docs** | Steam, IGDB, ITAD, HowLongToBeat, Firebase Cloud Messaging (FCM), Swagger (OpenAPI) | 다중 게임 플랫폼 메타데이터 연동, 푸시 알림 트리거 및 인터랙티브 API 명세화 |
 | **Library & Testing** | Resilience4j, Pydantic, Testcontainers, JUnit5 | 외부 API 호출 서킷 브레이커 장애 격리, 데이터 스키마 검증 및 격리 통합 테스트 |
 
----
+<br/>
+<br/>
 
 ## 4. 핵심 기능 및 구현 내용
 
@@ -69,25 +75,33 @@
 - Prometheus, Grafana, Loki를 연동하여 JVM/커넥션 풀 메트릭 및 구조화 JSON 로그를 실시간 수집/시각화
 - Grafana Alert Rule을 기반으로 `ERROR` 레벨 로그 감지 시 Slack 웹훅으로 원인 및 로그 링크 자동 발송
 
----
+<br/>
+<br/>
 
 ## 5. 데이터베이스 모델링
+
+<br/>
 
 <p align="center">
   <img width="850" alt="Owl&#39;s Pick-ERD" src="https://github.com/user-attachments/assets/3232b3e4-ba83-484e-bc39-043c8e60b74d" />
 </p>
 
+<br/>
+
 - `game` 엔티티 중심의 다중 플랫폼 메타데이터 정규화 및 수집 주기별 격리 구조 설계
 - 코사인 유사도 기반 RAG 검색을 위한 `pgvector`(`VECTOR(1536)`) 및 부분 일치 검색 가속을 위한 `pg_trgm` GIN 인덱스 적용
 - 상세 문서: [데이터베이스 설계 및 도메인 모델링](https://app.notion.com/p/DB-2a94b8ce5c8380d48d6dcb62d6fb0d28)
 
----
+<br/>
+<br/>
 
 ## 6. 실행 방법 (Getting Started)
 
 ### 1) 사전 요구사항
 - JDK 25
-- Docker Desktop 
+- Docker Desktop
+
+<br/>
 
 ### 2) 환경 변수 설정
 - 루트 디렉터리의 `.env.example` 복사 후 `.env` 파일 생성 및 필수 값 정의.
@@ -118,6 +132,9 @@ FASTAPI_URL=http://localhost:8000
 INTERNAL_API_BASE_URL=http://localhost:8080
 FIREBASE_CREDENTIALS_BASE64=your_fcm_base64_json
 ```
+
+<br/>
+
 ### 3) 로컬 인프라 구동
 - Docker Desktop 실행 후 로컬 개발용 DB 및 캐시 컨테이너 백그라운드 구동.
 
@@ -125,12 +142,15 @@ FIREBASE_CREDENTIALS_BASE64=your_fcm_base64_json
 docker compose up -d
 ```
 
+<br/>
+
 ### 4) 애플리케이션 빌드 및 실행
 
 - Spring Boot 백엔드 로컬 실행
 ```bash
 ./gradlew clean bootRun
 ```
+<br/>
 
 ### 5) 구동 확인 및 API 명세
 * Swagger API 명세서: `http://localhost:8080/swagger-ui/index.html`
