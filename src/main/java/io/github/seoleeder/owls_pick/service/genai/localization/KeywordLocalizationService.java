@@ -333,7 +333,7 @@ public class KeywordLocalizationService {
         log.info("[GenAI] Sending bulk keyword localization request for {} keywords to AI Engine...", request.keywords().size());
 
         URI targetUri = UriComponentsBuilder.fromUriString(props.fastapiUrl())
-                .path("/api/localization/keywords/bulk")
+                .path("/api/genai/localization/keywords/bulk")
                 .build()
                 .toUri();
 

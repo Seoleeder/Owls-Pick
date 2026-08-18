@@ -234,7 +234,7 @@ public class LocalizationService {
         log.info("[GenAI] Sending bulk localization request for {} games to AI Engine...", request.games().size());
 
         URI targetUri = UriComponentsBuilder.fromUriString(props.fastapiUrl())
-                .path("/api/localization/games/bulk")
+                .path("/api/genai/localization/games/bulk")
                 .build()
                 .toUri();
 
