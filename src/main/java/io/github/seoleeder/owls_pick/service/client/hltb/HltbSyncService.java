@@ -140,7 +140,7 @@ public class HltbSyncService {
         try {
             return hltbRestClient.get()
                     .uri(uriBuilder -> UriComponentsBuilder.fromUriString(hltbProperties.fastapiUrl())
-                            .path("/api/hltb/scrape")
+                            .path("/api/init/hltb/scrape")
                             .queryParam("game_name", gameName)
                             .build()
                             .toUri())
