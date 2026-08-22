@@ -2,6 +2,7 @@ package io.github.seoleeder.owls_pick.repository.impl;
 
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import io.github.seoleeder.owls_pick.entity.genai.GenaiFailedTask;
+import io.github.seoleeder.owls_pick.entity.genai.enums.GenaiFailReason;
 import io.github.seoleeder.owls_pick.entity.genai.enums.GenaiPipelineType;
 import io.github.seoleeder.owls_pick.repository.custom.GenaiFailedTaskRepositoryCustom;
 import lombok.RequiredArgsConstructor;
@@ -27,7 +28,9 @@ public class GenaiFailedTaskRepositoryImpl implements GenaiFailedTaskRepositoryC
                         // 파이프라인 타입 필터링
                         genaiFailedTask.pipelineType.eq(pipelineType),
                         // 아직 조치되지 않은 작업 데이터 필터링
-                        genaiFailedTask.isHandled.eq(false)
+                        genaiFailedTask.isHandled.eq(false),
+                        // 일시적 오류에 해당하는 재시도 가능 사유만 필터링
+                        genaiFailedTask.failReason.in(GenaiFailReason.getRetryableReasons())
                 )
                 // 식별자 기준 오름차순 정렬
                 .orderBy(genaiFailedTask.id.asc())
