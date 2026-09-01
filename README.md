@@ -28,7 +28,7 @@
 
 | 분류 | 기술 스택 | 적용 목적 및 세부 내용 |
 | :--- | :--- | :--- |
-| **Language & Framework** | Language & Framework | 메인 백엔드 비즈니스 로직 및 GenAI 비동기 파이프라인 전담 분리 |
+| **Language & Framework** | Java 25, Python, Spring Boot 3.5, FastAPI | 메인 백엔드 비즈니스 로직 및 GenAI 비동기 파이프라인 전담 분리 |
 | **Database & ORM** | PostgreSQL, Redis, Spring Data JPA, QueryDSL, Flyway | RDB 정규화 및 캐싱 계층 분리, 타입 세이프 쿼리 최적화 및 DB 형상 관리 |
 | **AI & Search** | OpenAI API, pgvector, pg_trgm | 메타데이터 한글화, 스팀 리뷰 요약, 1536차원 벡터 유사도 검색 및 GIN 부분일치 색인 |
 | **Infra & DevOps** | AWS (EC2, RDS, Parameter Store, IAM), Docker, Docker Compose, GitHub Actions, Nginx | 컨테이너 기반 격리 환경 구성, CI/CD 자동화 및 리버스 프록시 라우팅 |
